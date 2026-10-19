@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>پنل مدیریت</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600&display=swap">
+<style>
+:root{--bg:#e8eeed;--ink:#1d2430;--muted:#7c8794;--line:#d8dfde;--accent:#a8825a;font-family:'Vazirmatn',Tahoma,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:14px}
+button,input,select{font:inherit;color:inherit}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;gap:10px;flex-wrap:wrap}
+h1{margin:0;font-size:18px}
+.badge{font-size:11px;background:#fff3d6;color:#8a6a1c;border-radius:999px;padding:3px 10px}
+.badge.live{background:#d9f3e3;color:#1c6b3d}
+main{max-width:1100px;margin:0 auto;padding:18px;display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.btn{border:0;background:var(--ink);color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer}
+.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.del{background:#b0453a}
+.btn:disabled{opacity:.5}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.gi{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:#fff;text-align:start;width:100%}
+.gi.on{border-color:var(--ink);background:#f4f7f6}
+.gi img{width:38px;height:56px;object-fit:contain;background:#eef2f1;border-radius:8px}
+.gi small{color:var(--muted);display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input,select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:0}
+h3{margin:16px 0 8px;font-size:14px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:4px;text-align:center;font-size:12px}
+td input{width:100%;text-align:center;padding:6px 2px}
+.imgs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drop{border:1px dashed #b5c0be;border-radius:12px;padding:10px;text-align:center;background:#fafcfb}
+.drop img{max-width:100%;max-height:200px;object-fit:contain;display:block;margin:0 auto 8px;background:repeating-conic-gradient(#e9eeed 0 25%,#fff 0 50%) 0 0/14px 14px;border-radius:8px}
+.msg{min-height:20px;font-size:13px}
+.login{max-width:340px;margin:12vh auto;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sizerow{display:flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app-config.js"></script>
+<script src="data.js"></script>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DEFAULT_SIZES = ['S', 'M', 'L', 'XL'];
+const COLS = [['bust', 'دور سینه'], ['waist', 'دور کمر'], ['hips', 'دور باسن'], ['length', 'قد لباس'], ['sleeve', 'آستین']];
+let list = [], cur = null, files = {};
+
+const blank = () => ({ id: '', name: { fa: '', ar: '', en: '' }, price: 0, front: '', back: '', lead: 0,
+  sizes: DEFAULT_SIZES.map(n => ({ n, ok: true })), chart: null });
+
+async function boot() {
+  if (Store.live) {
+    const { data } = await Store.sb.auth.getSession();
+    if (!data.session) return loginView();
+  }
+  await refresh(); shell();
+}
+function loginView(msg = '') {
+  app.innerHTML = `<form class="card login" id="lf"><h1>ورود مدیر</h1>
+    <label>ایمیل<input type="email" id="em" required autocomplete="username"></label>
+    <label>رمز عبور<input type="password" id="pw" required autocomplete="current-password"></label>
+    <button class="btn">ورود</button><div class="msg" style="color:#b0453a">${esc(msg)}</div></form>`;
+  $('#lf').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await Store.sb.auth.signInWithPassword({ email: $('#em').value, password: $('#pw').value });
+    error ? loginView('ایمیل یا رمز اشتباه است') : boot();
+  };
+}
+async function refresh() { list = (await Store.list()) || []; }
+
+function shell() {
+  app.innerHTML = `<header><div class="row"><h1>پنل مدیریت لباس‌ها</h1>
+      <span class="badge ${Store.live ? 'live' : ''}">${Store.live ? 'متصل به Supabase' : 'حالت آزمایشی: فقط در همین مرورگر ذخیره می‌شود'}</span></div>
+      <div class="row"><a class="btn alt" href="index.html" target="_blank" style="text-decoration:none">دیدن سایت</a>${Store.live ? '<button class="btn alt" id="out">خروج</button>' : ''}</div></header>
+    <main><aside class="card"><div class="row"><button class="btn" id="add">+ لباس جدید</button><button class="btn alt" id="imp" title="لباس‌های فعلی سایت را وارد می‌کند">وارد کردن لباس‌های فعلی</button></div><div class="list" id="gl"></div></aside>
+    <section class="card" id="ed"></section></main>`;
+  $('#add').onclick = () => { cur = blank(); files = {}; drawList(); drawForm(); };
+  $('#imp').onclick = importCsv;
+  if ($('#out')) $('#out').onclick = async () => { await Store.sb.auth.signOut(); boot(); };
+  drawList(); drawForm();
+}
+function drawList() {
+  $('#gl').innerHTML = list.length ? list.map(g => `<button class="gi ${cur && cur.id === g.id ? 'on' : ''}" data-id="${esc(g.id)}"><img src="${esc(g.front)}" alt=""><span>${esc(g.name.fa || g.name.en)}<small>${esc(g.price)}</small></span></button>`).join('')
+    : '<div class="msg">هنوز لباسی ثبت نشده. «وارد کردن لباس‌های فعلی» یا «لباس جدید» را بزنید.</div>';
+  document.querySelectorAll('.gi').forEach(b => b.onclick = () => { cur = structuredClone(list.find(x => x.id === b.dataset.id)); files = {}; drawList(); drawForm(); });
+}
+function drawForm() {
+  const ed = $('#ed');
+  if (!cur) { ed.innerHTML = '<div class="msg">یک لباس را انتخاب کنید یا لباس جدید بسازید.</div>'; return; }
+  const g = cur, sizes = g.sizes;
+  const chart = g.chart || {};
+  ed.innerHTML = `<div class="grid">
+      <label>نام فارسی<input id="nfa" value="${esc(g.name.fa)}"></label>
+      <label>نام عربی<input id="nar" value="${esc(g.name.ar)}" dir="rtl"></label>
+      <label>نام انگلیسی<input id="nen" value="${esc(g.name.en)}" dir="ltr"></label>
+      <label>قیمت<input id="pr" type="number" min="0" step="0.001" value="${esc(g.price)}"></label>
+      <label>زمان آماده‌سازی اضافه (روز)<input id="ld" type="number" min="0" value="${esc(g.lead || 0)}"></label></div>
+    <h3>تصاویر (PNG یا WebP با پس‌زمینهٔ شفاف بهتر است)</h3>
+    <div class="imgs">${['front', 'back'].map(k => `<div class="drop"><img id="pv-${k}" src="${esc(g[k])}" alt="" ${g[k] ? '' : 'hidden'}><label>${k === 'front' ? 'روی لباس' : 'پشت لباس'}<input type="file" accept="image/*" data-k="${k}"></label></div>`).join('')}</div>
+    <h3>سایزها و موجودی</h3>
+    <div class="row" id="szs">${sizes.map((s, i) => `<div class="sizerow"><input style="width:64px" data-i="${i}" data-f="n" value="${esc(s.n)}"><label style="flex-direction:row;align-items:center;gap:4px"><input type="checkbox" data-i="${i}" data-f="ok" ${s.ok ? 'checked' : ''}>موجود</label><button class="btn alt" data-rm="${i}">✕</button></div>`).join('')}<button class="btn alt" id="addsz">+ سایز</button></div>
+    <h3>جدول راهنمای سایز (سانتی‌متر؛ خالی بگذارید تا مقدار پیش‌فرض استفاده شود)</h3>
+    <div style="overflow:auto"><table><tr><th>سایز</th>${COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr>
+      ${sizes.map(s => `<tr><td>${esc(s.n)}</td>${COLS.map(c => `<td><input type="number" min="0" data-c="${esc(s.n)}" data-f="${c[0]}" value="${esc((chart[s.n] || {})[c[0]] ?? '')}"></td>`).join('')}</tr>`).join('')}</table></div>
+    <div class="row" style="margin-top:16px"><button class="btn" id="save">ذخیره</button>${g.id ? '<button class="btn del" id="del">حذف</button>' : ''}<span class="msg" id="msg"></span></div>`;
+  ed.querySelectorAll('input[type=file]').forEach(inp => inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return; files[inp.dataset.k] = f;
+    const pv = $('#pv-' + inp.dataset.k); pv.src = URL.createObjectURL(f); pv.hidden = false;
+  });
+  ed.querySelectorAll('#szs input').forEach(i => i.onchange = () => {
+    const s = sizes[+i.dataset.i]; if (i.dataset.f === 'n') { s.n = i.value.trim().toUpperCase(); drawForm(); } else s.ok = i.checked;
+  });
+  ed.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { sizes.splice(+b.dataset.rm, 1); drawForm(); });
+  $('#addsz').onclick = () => { sizes.push({ n: 'XXL', ok: true }); drawForm(); };
+  $('#save').onclick = save;
+  if ($('#del')) $('#del').onclick = async () => {
+    if (!confirm('این لباس حذف شود؟')) return;
+    await Store.remove(g.id); cur = null; await refresh(); drawList(); drawForm();
+  };
+}
+async function save() {
+  const g = cur, msg = $('#msg'), btn = $('#save');
+  g.name = { fa: $('#nfa').value.trim(), ar: $('#nar').value.trim(), en: $('#nen').value.trim() };
+  g.price = parseFloat($('#pr').value) || 0; g.lead = parseInt($('#ld').value) || 0;
+  if (!g.name.fa && !g.name.en) { msg.textContent = 'حداقل یک نام وارد کنید'; return; }
+  const chart = {};
+  document.querySelectorAll('[data-c]').forEach(i => { if (i.value !== '') (chart[i.dataset.c] ||= {})[i.dataset.f] = +i.value; });
+  g.chart = Object.keys(chart).length ? chart : null;
+  btn.disabled = true; msg.textContent = 'در حال ذخیره…';
+  try {
+    if (!g.id && Store.live) { const r = await Store.save({ ...g, front: g.front || '', back: g.back || '' }); g.id = r.id; }
+    const stamp = g.id || 'new' + Date.now();
+    for (const k of ['front', 'back']) if (files[k]) { g[k] = await Store.uploadImage(await Store.prepImage(files[k]), `${stamp}/${k}.webp`); }
+    if (!g.back) g.back = g.front;
+    const saved = await Store.save(g); cur = structuredClone(saved); files = {};
+    await refresh(); drawList(); drawForm(); $('#msg').textContent = 'ذخیره شد ✓';
+  } catch (e) { console.error(e); msg.textContent = 'خطا: ' + (e.message || e); btn.disabled = false; }
+}
+async function importCsv() {
+  if (list.length && !confirm('لباس‌های فعلی سایت به لیست اضافه شوند؟')) return;
+  const csv = await (await fetch('clothes.csv', { cache: 'no-cache' })).text();
+  const rows = csv.replace(/^﻿/, '').split(/\r?\n/).filter(Boolean).map(r => r.split(','));
+  const head = rows.shift();
+  for (const r of rows) {
+    const o = Object.fromEntries(head.map((h, i) => [h.trim(), (r[i] || '').trim()]));
+    await Store.save({ id: '', name: { fa: o.name_fa, ar: o.name_ar, en: o.name_en }, price: +o.price, front: o.front, back: o.back, lead: 0, chart: null,
+      sizes: o.sizes.split(';').filter(Boolean).map(s => { const [n, a] = s.split(':'); return { n, ok: a !== '0' }; }) });
+  }
+  await refresh(); drawList();
+}
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+id,name_fa,name_ar,name_en,price,sizes,front,back
+1,عبایای مشکی سلطنتی,عباية سوداء ملكية,Royal Black Abaya,55,S:1;M:1;L:1;XL:0,images/transparent/abaya-1-front.png,images/transparent/abaya-1-back.png
+2,عبایای سرمه‌ای کمربندی,عباية كحلية بحزام,Navy Belted Abaya,48,S:0;M:1;L:1;XL:1,images/transparent/abaya-2-front.png,images/transparent/abaya-2-back.png
+3,عبایای زرشکی روباز,عباية عنابية مفتوحة,Burgundy Open Abaya,52,S:1;M:1;L:0;XL:0,images/transparent/abaya-3-front.png,images/transparent/abaya-3-back.png
+4,عبایای سبز مریمی,عباية خضراء زيتية,Sage Everyday Abaya,38,S:1;M:1;L:1;XL:1,images/transparent/abaya-4-front.png,images/transparent/abaya-4-back.png
+5,عبایای قهوه‌ای نقطه‌دار,عباية موكا منقطة,Mocha Dotted Abaya,44,S:1;M:0;L:1;XL:1,images/transparent/abaya-5-front.png,images/transparent/abaya-5-back.png
+6,عبایای ذغالی کلاسیک,عباية فحمية كلاسيكية,Charcoal Classic Abaya,40,S:1;M:1;L:1;XL:1,images/transparent/abaya-6-front.png,images/transparent/abaya-6-back.png
+7,عبایای کرم گلدوزی‌شده,عباية كريمية مطرزة,Cream Embroidered Abaya,65,S:0;M:0;L:1;XL:1,images/transparent/abaya-7-front.png,images/transparent/abaya-7-back.png
+8,کافتان عاجی گلدوزی‌شده,قفطان عاجي مطرز,Ivory Embroidered Caftan,50,S:1;M:1;L:0;XL:1,images/transparent/abaya-8-front.png,images/transparent/abaya-8-back.png

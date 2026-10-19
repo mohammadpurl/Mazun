@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Abaya Oman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600&display=swap">
+<style>
+:root{
+  --bg:#e8eeed; --ink:#1d2430; --muted:#8a847b; --line:#e2dcd2; --accent:#a8825a;
+  --card:#fffdf9; --item-w:clamp(150px,21vw,230px);
+  font-family:'Vazirmatn','Segoe UI',Tahoma,system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
+  background:radial-gradient(circle,rgba(30,40,55,.13) 1px,transparent 1.5px) 0 0/22px 22px,var(--bg)}
+.ticker{overflow:hidden;background:#1d2a44;color:#dfe6f2;font-size:11px;letter-spacing:.12em;white-space:nowrap;padding:9px 0;direction:ltr}
+.ticker div{display:inline-block;padding-inline-start:100%;animation:tick 28s linear infinite}
+@keyframes tick{to{transform:translateX(-100%)}}
+button{font:inherit;color:inherit;cursor:pointer}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:max(18px,env(safe-area-inset-top)) 22px 6px}
+.brand{font-weight:600;font-size:clamp(18px,3vw,24px);letter-spacing:.04em}
+.brand small{display:block;font-weight:300;font-size:12px;color:var(--muted);letter-spacing:.02em;margin-top:2px}
+.langs{display:flex;gap:2px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px}
+.langs button{border:0;background:none;padding:6px 12px;border-radius:999px;font-size:13px;transition:background .25s,color .25s}
+.langs button[aria-pressed=true]{background:var(--ink);color:#fff}
+.hint{text-align:center;color:var(--muted);font-size:13px;margin:6px 16px 0;font-weight:300}
+
+/* rail */
+main{flex:1;display:flex;align-items:center}
+.rail-scroll{width:100%;overflow-x:auto;overflow-y:hidden;padding:40px 0 90px;
+  scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail-scroll::-webkit-scrollbar{display:none}
+.rail{position:relative;display:flex;gap:0;width:max-content;min-width:100%;
+  padding:27px clamp(20px,6vw,80px) 0;justify-content:center}
+.bar{position:absolute;top:23px;inset-inline:0;height:9px;border-radius:5px;z-index:2;
+  background:linear-gradient(#f7f7f7,#c9c9c9 30%,#7d7d7d 62%,#d4d4d4);
+  box-shadow:0 8px 10px -5px rgba(0,0,0,.35)}
+.bar::before,.bar::after{content:"";position:absolute;top:-10px;width:10px;height:32px;border-radius:4px;
+  background:linear-gradient(90deg,#cfcfcf,#8c8c8c)}
+.bar::before{inset-inline-start:clamp(8px,3vw,40px)}
+.bar::after{inset-inline-end:clamp(8px,3vw,40px)}
+.item{position:relative;z-index:3;flex:0 0 auto;width:var(--item-w);margin-inline:calc(var(--item-w) * -.12);aspect-ratio:300/520;
+  background:none;border:0;padding:0;scroll-snap-align:center;transform-origin:50% 0;
+  transition:transform .55s cubic-bezier(.2,.8,.2,1),filter .55s;
+  animation:sway 6s ease-in-out infinite;animation-delay:calc(var(--i)*-.7s)}
+@keyframes sway{0%,100%{rotate:-.5deg}50%{rotate:.5deg}}
+.item{perspective:900px}
+.item .card{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,.8,.2,1)}
+.item:hover .card,.item:focus-visible .card{transform:rotateY(180deg)}
+.item{transition:transform .55s cubic-bezier(.2,.8,.2,1),filter .55s,translate .5s cubic-bezier(.2,.8,.2,1)}
+.item:hover,.item:focus-visible{z-index:5}
+.item svg.hanger{position:absolute;z-index:0;left:calc(50% - 6px);width:12px;height:24px;top:-9px;overflow:visible;pointer-events:none;color:#262626}
+.item:nth-child(3n+2) svg.hanger{color:#8c2f22}
+.item .card{inset:8px 0 0;z-index:1}
+.item .card img{object-position:50% 0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.item .card img.k{transform:rotateY(180deg)}
+.item img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.item img{object-fit:contain;filter:drop-shadow(0 14px 10px rgba(40,30,20,.22));transition:filter .55s;user-select:none;-webkit-user-drag:none}
+.item .label{position:absolute;top:100%;inset-inline:-12%;margin-top:14px;text-align:center;
+  opacity:0;transform:translateY(-8px);transition:opacity .35s,transform .45s;pointer-events:none}
+.item .label b{display:block;font-weight:600;font-size:14px}
+.item .label span{color:var(--accent);font-size:13px}
+.item:hover,.item:focus-visible{transform:translate3d(0,10px,0) scale(1.07);animation-play-state:paused;rotate:0deg;outline:none}
+.item:hover img,.item:focus-visible img{filter:drop-shadow(0 26px 16px rgba(40,30,20,.3))}
+.item:hover .label,.item:focus-visible .label{opacity:1;transform:none}
+@media (hover:none){.item .label{opacity:.9;transform:none}.item:active{transform:translate3d(0,10px,0) scale(1.05)}}
+.item.enter{animation:drop .8s cubic-bezier(.2,.8,.2,1) both,sway 6s ease-in-out infinite;animation-delay:calc(var(--i)*.07s),0s}
+@keyframes drop{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:none}}
+
+/* viewer */
+.viewer{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:12px;
+  background:rgba(232,238,237,.78);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+  opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+.viewer.open{opacity:1;visibility:visible}
+.panel{width:min(980px,100%);max-height:100%;overflow:auto;background:transparent;border:0;
+  border-radius:22px;box-shadow:none;padding:18px;
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;
+  transform:translateY(24px) scale(.97);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.viewer.open .panel{transform:none}
+.close{position:absolute;top:max(14px,env(safe-area-inset-top));inset-inline-end:16px;width:42px;height:42px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;font-size:20px;line-height:1;z-index:2}
+.stage{display:flex;align-items:center;gap:6px}
+.nav{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;
+  display:grid;place-items:center;transition:transform .25s,background .25s}
+.nav:hover{background:var(--ink);color:#fff}
+.nav svg{width:18px;height:18px}
+[dir=rtl] .nav svg{transform:scaleX(-1)}
+.flip3d{flex:1;min-width:0;perspective:1200px}
+.flipper{position:relative;aspect-ratio:300/520;transform-style:preserve-3d;
+  transition:transform .8s cubic-bezier(.3,.8,.2,1)}
+.flipper.back{transform:rotateY(180deg)}
+.flipper img{object-fit:contain;position:absolute;inset:0;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  filter:drop-shadow(0 18px 14px rgba(40,30,20,.22))}
+.flipper img.b{transform:rotateY(180deg)}
+.info{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:6px 4px}
+.info h2{margin:0;font-size:clamp(20px,3.4vw,28px);font-weight:600;padding-inline-end:44px}
+.price{color:var(--accent);font-size:20px;font-weight:400}
+.count{color:var(--muted);font-size:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.flipbtn{border:1px solid var(--ink);background:none;border-radius:999px;padding:9px 18px;font-size:14px;transition:background .25s,color .25s}
+.flipbtn:hover{background:var(--ink);color:#fff}
+.sub{font-size:13px;color:var(--muted)}
+.sizes{display:flex;gap:8px;flex-wrap:wrap}
+.size{min-width:48px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:14px;transition:all .2s}
+.size:not(:disabled):hover{border-color:var(--ink)}
+.size[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.size:disabled{opacity:.3;text-decoration:line-through;cursor:not-allowed}
+.sizes.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.order{border:0;background:var(--ink);color:#fff;border-radius:14px;height:52px;font-size:16px;transition:transform .2s,opacity .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.order:hover{transform:translateY(-2px)}
+.order:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.msg{min-height:18px;font-size:12px;color:#b0453a}
+.toast{position:fixed;bottom:24px;inset-inline:0;margin:auto;width:max-content;max-width:90%;background:var(--ink);color:#fff;
+  padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transform:translateY(10px);transition:all .35s;z-index:30;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+@media (max-width:700px){
+  .panel{grid-template-columns:1fr;gap:10px;padding:14px;padding-top:56px}
+  .flip3d{display:flex;justify-content:center}
+  .flipper{width:min(62vw,calc(46vh * 300 / 520))}
+  .info{gap:10px}
+  .info h2{padding-inline-end:0;font-size:20px}
+  .order{height:48px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span id="brand"></span><small id="tag"></small></div>
+  <div class="langs" role="group" aria-label="Language">
+    <button data-lang="fa">فارسی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button>
+  </div>
+</header>
+<p class="hint" id="hint"></p>
+<main><div class="rail-scroll"><div class="rail" id="rail"><div class="bar"></div></div></div></main>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-hidden="true">
+  <button class="close" id="close" aria-label="Close">✕</button>
+  <div class="panel">
+    <div class="stage">
+      <button class="nav" id="prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="flip3d"><div class="flipper" id="flipper"><img id="imgF" alt=""><img id="imgB" class="b" alt=""></div></div>
+      <button class="nav" id="next" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:scaleX(-1)"><path d="M15 5l-7 7 7 7"/></svg></button>
+    </div>
+    <div class="info">
+      <div class="count" id="count"></div>
+      <h2 id="vName"></h2>
+      <div class="price" id="vPrice"></div>
+      <div class="row"><button class="flipbtn" id="flipbtn"></button></div>
+      <div><div class="sub" id="sizeTitle"></div><div class="sizes" id="sizes"></div></div>
+      <div class="msg" id="msg"></div>
+      <button class="order" id="order"></button>
+      <div id="tools"></div>
+    </div>
+  </div>
+</div>
+<div class="ticker" aria-hidden="true"><div id="tickerText"></div></div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app-config.js"></script>
+<script src="data.js"></script>
+<script src="tools.js"></script>
+
+<script type="text/plain" id="csv-fallback">id,name_fa,name_ar,name_en,price,sizes,front,back
+1,عبایای مشکی سلطنتی,عباية سوداء ملكية,Royal Black Abaya,55,S:1;M:1;L:1;XL:0,images/transparent/abaya-1-front.png,images/transparent/abaya-1-back.png
+2,عبایای سرمه‌ای کمربندی,عباية كحلية بحزام,Navy Belted Abaya,48,S:0;M:1;L:1;XL:1,images/transparent/abaya-2-front.png,images/transparent/abaya-2-back.png
+3,عبایای زرشکی روباز,عباية عنابية مفتوحة,Burgundy Open Abaya,52,S:1;M:1;L:0;XL:0,images/transparent/abaya-3-front.png,images/transparent/abaya-3-back.png
+4,عبایای سبز مریمی,عباية خضراء زيتية,Sage Everyday Abaya,38,S:1;M:1;L:1;XL:1,images/transparent/abaya-4-front.png,images/transparent/abaya-4-back.png
+5,عبایای قهوه‌ای نقطه‌دار,عباية موكا منقطة,Mocha Dotted Abaya,44,S:1;M:0;L:1;XL:1,images/transparent/abaya-5-front.png,images/transparent/abaya-5-back.png
+6,عبایای ذغالی کلاسیک,عباية فحمية كلاسيكية,Charcoal Classic Abaya,40,S:1;M:1;L:1;XL:1,images/transparent/abaya-6-front.png,images/transparent/abaya-6-back.png
+7,عبایای کرم گلدوزی‌شده,عباية كريمية مطرزة,Cream Embroidered Abaya,65,S:0;M:0;L:1;XL:1,images/transparent/abaya-7-front.png,images/transparent/abaya-7-back.png
+8,کافتان عاجی گلدوزی‌شده,قفطان عاجي مطرز,Ivory Embroidered Caftan,50,S:1;M:1;L:0;XL:1,images/transparent/abaya-8-front.png,images/transparent/abaya-8-back.png
+</script>
+<script>
+/* ====== SETTINGS: edit these ====== */
+const CONFIG = {
+  brand: { fa: 'عبایا عمان', ar: 'عبايا عُمان', en: 'Abaya Oman' },
+  channel: 'whatsapp',          // 'whatsapp' | 'telegram' | 'instagram'
+  whatsapp: '96800000000',      // number with country code, digits only
+  telegram: 'your_username',    // without @
+  instagram: 'your_username',   // without @
+  currency: { fa: 'ریال عمانی', ar: 'ر.ع.', en: 'OMR' }
+};
+/* ================================== */
+
+const T = {
+  fa: { more:'جزئیات و سفارش', ticker:'طرح‌های جدید هر روز', tag:'مجموعه عبایا', hint:'روی هر عبایا بروید یا ضربه بزنید؛ برای دیدن همه، رگال را بکشید', flip:'دیدن پشت و روی لباس', sizes:'سایز', order:'سفارش', pick:'لطفاً یک سایز انتخاب کنید', of:'از', soldout:'همه سایزها تمام شده', copied:'پیام کپی شد؛ در دایرکت پیست کنید',
+    msg:(n,s,p)=>`سلام، می‌خواهم این لباس را سفارش دهم:\n${n}\nسایز: ${s}\nقیمت: ${p}`, front:'روی لباس', backS:'پشت لباس' },
+  ar: { more:'التفاصيل والطلب', ticker:'تصاميم جديدة كل يوم', tag:'مجموعة العبايات', hint:'مرّر أو المس أي عباية؛ اسحب الشماعة لرؤية الجميع', flip:'عرض الوجه الآخر', sizes:'المقاس', order:'اطلب الآن', pick:'يرجى اختيار مقاس', of:'من', soldout:'جميع المقاسات نفدت', copied:'تم نسخ الرسالة، الصقها في المحادثة',
+    msg:(n,s,p)=>`مرحباً، أرغب في طلب:\n${n}\nالمقاس: ${s}\nالسعر: ${p}` },
+  en: { more:'Details & order', ticker:'NEW DESIGNS DAILY', tag:'Abaya collection', hint:'Hover or tap an abaya — slide the rail to see them all', flip:'See the other side', sizes:'Size', order:'Order now', pick:'Please choose a size', of:'of', soldout:'All sizes sold out', copied:'Message copied — paste it in the chat',
+    msg:(n,s,p)=>`Hello, I'd like to order:\n${n}\nSize: ${s}\nPrice: ${p}` }
+};
+const LOCALE = { fa:'fa-IR', ar:'ar-OM', en:'en-US' };
+const $ = id => document.getElementById(id);
+let items = [], lang = 'fa', cur = -1, size = null, showBack = false;
+
+function parseCSV(text){
+  const rows=[]; let row=[], f='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++} else q=false } else f+=c }
+    else if(c==='"') q=true;
+    else if(c===','){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(f);f=''; if(row.some(x=>x.trim()))rows.push(row); row=[] }
+    else f+=c;
+  }
+  if(f||row.length){row.push(f);rows.push(row)}
+  const head=rows.shift().map(h=>h.trim().replace(/^﻿/,''));
+  return rows.map(r=>Object.fromEntries(head.map((h,i)=>[h,(r[i]||'').trim()])));
+}
+function toItem(r){
+  return { id:r.id, name:{fa:r.name_fa,ar:r.name_ar,en:r.name_en}, price:parseFloat(r.price),
+    sizes:r.sizes.split(';').filter(Boolean).map(s=>{const [n,a]=s.split(':');return {n:n.trim(),ok:a!=='0'}}),
+    front:r.front, back:r.back };
+}
+async function load(){
+  try{ const saved=await Store.list(); if(saved){ items=saved; return } }catch(e){ console.warn(e) }
+  let text;
+  try{ const res=await fetch('clothes.csv',{cache:'no-cache'}); if(!res.ok)throw 0; text=await res.text() }
+  catch(e){ text=$('csv-fallback').textContent }
+  items=parseCSV(text).map(toItem);
+}
+const fmtPrice = p => `${p.toLocaleString(LOCALE[lang],{maximumFractionDigits:3})} ${CONFIG.currency[lang]}`;
+const num = n => (+n).toLocaleString(LOCALE[lang]);
+
+function buildRail(){
+  const rail=$('rail');
+  rail.querySelectorAll('.item').forEach(e=>e.remove());
+  items.forEach((it,i)=>{
+    const b=document.createElement('button');
+    b.className='item enter'; b.style.setProperty('--i',i);
+    b.innerHTML=`<svg class="hanger" viewBox="0 0 12 24" aria-hidden="true"><path d="M5 24 V9 C5 3 10 1 10.5 5.5 C10.8 8.5 8 9 7 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="card"><img class="f" loading="lazy" src="${it.front}" alt=""><img class="k" loading="lazy" src="${it.back}" alt=""></span><span class="label"><b></b><span class="p"></span></span>`;
+    b.addEventListener('click',()=>openViewer(i));
+    b.addEventListener('mouseenter',()=>spread(i));
+    b.addEventListener('focus',()=>spread(i));
+    b.addEventListener('mouseleave',()=>spread(-1));
+    b.addEventListener('blur',()=>spread(-1));
+    rail.appendChild(b);
+  });
+  labels();
+}
+function spread(i){
+  const sign=document.dir==='rtl'?-1:1, els=document.querySelectorAll('.item');
+  const push=Math.min(els[0]?els[0].offsetWidth*.42:60,90);
+  els.forEach((e,j)=>{
+    const d=j-i;
+    e.style.translate=(i<0||d===0)?'0 0':`${Math.sign(d)*sign*push/Math.abs(d)}px 0`;
+  });
+}
+function labels(){
+  document.querySelectorAll('.item').forEach((b,i)=>{
+    const it=items[i], n=it.name[lang];
+    b.setAttribute('aria-label',n); b.querySelectorAll('img').forEach(im=>im.alt=n);
+    b.querySelector('.label b').textContent=n; b.querySelector('.label .p').textContent=fmtPrice(it.price);
+  });
+}
+function setLang(l){
+  lang=l; try{localStorage.setItem('lang',l)}catch(e){}
+  const d=l==='en'?'ltr':'rtl';
+  document.documentElement.lang=l; document.documentElement.dir=d;
+  document.title=CONFIG.brand[l];
+  $('brand').textContent=CONFIG.brand[l]; $('tag').textContent=T[l].tag; $('hint').textContent=T[l].hint;
+  document.querySelectorAll('.langs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===l));
+  $('tickerText').textContent=Array(6).fill(T[l].ticker).join('   •   ');
+  $('sizeTitle').textContent=T[l].sizes; $('order').textContent=T[l].order;
+  labels(); if(cur>=0) fillViewer(false);
+  $('prev').setAttribute('aria-label',l==='en'?'Previous':l==='ar'?'السابق':'قبلی');
+  $('next').setAttribute('aria-label',l==='en'?'Next':l==='ar'?'التالي':'بعدی');
+}
+function flipLabel(){ $('flipbtn').textContent='↺  '+T[lang].flip }
+function fillViewer(reset=true){
+  const it=items[cur];
+  if(reset){ size=null; showBack=false; $('flipper').classList.remove('back'); $('imgF').src=it.front; $('imgB').src=it.back; $('msg').textContent='' }
+  $('imgF').alt=it.name[lang]; $('imgB').alt=it.name[lang];
+  $('vName').textContent=it.name[lang]; $('vPrice').textContent=fmtPrice(it.price);
+  $('count').textContent=`${num(cur+1)} ${T[lang].of} ${num(items.length)}`;
+  flipLabel();
+  Tools.mount($('tools'),it,lang);
+  const box=$('sizes'); box.innerHTML='';
+  it.sizes.forEach(s=>{
+    const b=document.createElement('button'); b.className='size'; b.textContent=s.n; b.disabled=!s.ok;
+    b.setAttribute('aria-pressed',String(size===s.n));
+    b.onclick=()=>{size=s.n; $('msg').textContent=''; box.querySelectorAll('.size').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))};
+    box.appendChild(b);
+  });
+  if(!it.sizes.some(s=>s.ok)){ $('msg').textContent=T[lang].soldout; $('order').disabled=true } else $('order').disabled=false;
+}
+function openViewer(i){
+  cur=i; fillViewer(); const v=$('viewer'); v.classList.add('open'); v.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden'; $('close').focus({preventScroll:true});
+}
+function closeViewer(){ $('viewer').classList.remove('open'); $('viewer').setAttribute('aria-hidden','true'); document.body.style.overflow=''; cur=-1 }
+function go(d){ if(cur<0)return; cur=(cur+d+items.length)%items.length; fillViewer() }
+function flip(){ showBack=!showBack; $('flipper').classList.toggle('back',showBack) }
+function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>e.classList.remove('show'),2600) }
+
+function order(){
+  const it=items[cur];
+  if(!size){ $('msg').textContent=T[lang].pick; const s=$('sizes'); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); return }
+  const text=T[lang].msg(it.name[lang],size,fmtPrice(it.price));
+  const enc=encodeURIComponent(text);
+  if(CONFIG.channel==='whatsapp') window.open(`https://wa.me/${CONFIG.whatsapp}?text=${enc}`,'_blank','noopener');
+  else if(CONFIG.channel==='telegram') window.open(`https://t.me/${CONFIG.telegram}?text=${enc}`,'_blank','noopener');
+  else { (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(T[lang].copied),()=>{}); window.open(`https://ig.me/m/${CONFIG.instagram}`,'_blank','noopener') }
+}
+
+/* events */
+document.querySelectorAll('.langs button').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+$('close').onclick=closeViewer; $('flipbtn').onclick=flip; $('order').onclick=order;
+const step = () => document.dir==='rtl'?-1:1;
+$('prev').onclick=()=>go(-1); $('next').onclick=()=>go(1);
+$('viewer').addEventListener('click',e=>{ if(e.target===$('viewer'))closeViewer() });
+document.addEventListener('keydown',e=>{
+  if(cur<0)return;
+  if(e.key==='Escape')closeViewer();
+  else if(e.key==='ArrowRight')go(document.dir==='rtl'?-1:1);
+  else if(e.key==='ArrowLeft')go(document.dir==='rtl'?1:-1);
+  else if(e.key==='f'||e.key==='F')flip();
+});
+let sx=null;
+$('viewer').addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+$('viewer').addEventListener('touchend',e=>{
+  if(sx===null)return; const dx=e.changedTouches[0].clientX-sx; sx=null;
+  if(Math.abs(dx)>60) go(dx<0?1:-1);   // swipe left = next, swipe right = previous
+});
+$('flipper').addEventListener('click',flip);
+
+(async()=>{
+  await load();
+  let l; try{l=localStorage.getItem('lang')}catch(e){}
+  if(!T[l]) l=(navigator.language||'fa').slice(0,2); if(!T[l]) l='fa';
+  buildRail(); setLang(l);
+})();
+</script>
+</body>
+</html>

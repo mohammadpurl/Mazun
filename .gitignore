@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# local-mode data (demo store and uploaded images)
+data/store.json
+public/uploads/
