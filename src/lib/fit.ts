@@ -1,65 +1,65 @@
-/* Pure shop logic: size charts, size suggestion and the arrival planner.
+/* Pure shop logic: size guide, the size assistant's recommendation, prices.
    Shared by the shop UI and the tests, so it must not touch the DOM or the network. */
-import { DEFAULT_CHART } from './defaults';
+import { DEFAULT_CHART, SIZE_ORDER } from './defaults';
 import type { Garment, SizeChart } from './types';
 
-/** The garment's own chart, falling back per size to the default chart. */
+/** The garment's own chart, falling back per size to the default guide. */
 export function chartOf(g: Pick<Garment, 'sizes' | 'chart'>): SizeChart {
   const out: SizeChart = {};
   for (const s of g.sizes) {
-    const row = g.chart?.[s.n] ?? DEFAULT_CHART[s.n as keyof typeof DEFAULT_CHART];
+    const row = g.chart?.[s.n] ?? DEFAULT_CHART[s.n];
     if (row) out[s.n] = { ...row };
   }
   return out;
 }
 
-export interface SizeAdvice {
-  /** Size that fits best by height and weight. */
+export type FitPref = 'fitted' | 'regular' | 'relaxed';
+export interface SizeInputs {
+  height: number;
+  usual: string;
+  fit: FitPref;
+  /** Optional bust measurement in cm; 0 when not given. */
+  bust: number;
+  len: 'ankle' | 'floor';
+}
+export interface SizeRecommendation {
   size: string;
-  /** Closest size in stock; equals size when that one is available, null when nothing is. */
-  pick: string | null;
-  soldOut: boolean;
-  /** How the garment length compares to the customer's height, when the chart has a length. */
-  length: 'long' | 'short' | 'ok' | null;
+  /** cm of room at the bust, when a bust measurement was given. */
+  ease: number | null;
+  /** How the hem falls for this height. */
+  height: 'tall' | 'short' | 'ok';
 }
 
-/** Rough size from BMI, then the nearest in-stock size. Abayas are loose, so this is a guide only. */
-export function suggestSize(g: Pick<Garment, 'sizes' | 'chart'>, heightCm: number, weightKg: number): SizeAdvice | null {
-  if (!g.sizes.length || !(heightCm > 0) || !(weightKg > 0)) return null;
-  const bmi = weightKg / (heightCm / 100) ** 2;
-  const f = Math.max(0, Math.min(1, (bmi - 18) / 12));
-  const idx = Math.round(f * (g.sizes.length - 1));
-  let pick = -1, best = Infinity;
-  g.sizes.forEach((s, i) => { if (s.ok && Math.abs(i - idx) < best) { best = Math.abs(i - idx); pick = i; } });
-  const pickName = pick >= 0 ? g.sizes[pick].n : null;
-  const row = pickName ? chartOf(g)[pickName] : undefined;
-  let length: SizeAdvice['length'] = null;
-  if (row?.length) {
-    const diff = row.length - heightCm * 0.85;
-    length = diff > 6 ? 'long' : diff < -6 ? 'short' : 'ok';
+const idx = (s: string) => (SIZE_ORDER as readonly string[]).indexOf(s);
+
+/** The design's size assistant: usual size and fit preference, or the bust measurement when given,
+ *  then the nearest size in stock. Guidance only; never derived from a photo. */
+export function recommendSize(inp: SizeInputs, g: Pick<Garment, 'sizes' | 'chart' | 'shape'>): SizeRecommendation | null {
+  const available = g.sizes.filter(s => s.ok && idx(s.n) >= 0).map(s => s.n).sort((a, b) => idx(a) - idx(b));
+  if (!available.length) return null;
+  const chart = chartOf(g);
+  const bustOf = (s: string) => chart[s]?.bust ?? DEFAULT_CHART[s]?.bust ?? 0;
+  let i = Math.max(0, idx(inp.usual));
+  if (inp.bust > 0) {
+    const allow = { fitted: 2, regular: 6, relaxed: 12 }[inp.fit];
+    i = SIZE_ORDER.findIndex(k => (DEFAULT_CHART[k]?.bust ?? 0) >= inp.bust + allow - 6);
+    if (i < 0) i = SIZE_ORDER.length - 1;
+  } else {
+    if (inp.fit === 'relaxed') i += 1;
+    if (inp.fit === 'fitted' && (g.shape === 'abaya' || g.shape === 'kaftan')) i -= 1;
   }
-  return { size: g.sizes[idx].n, pick: pickName, soldOut: pick !== idx, length };
-}
-
-export interface Arrival {
-  /** Arrival date if ordered today. */
-  earliest: Date;
-  /** Last day to order and still arrive with the safety buffer. */
-  latest: Date;
-  verdict: 'good' | 'tight' | 'late';
-}
-
-const startOfDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
-
-/** Dates are calendar days in UTC; the UI formats them in the visitor's locale. */
-export function planArrival(eventDate: Date, today: Date, days: { prep: number; lead: number; ship: number; buffer: number }): Arrival {
-  const ev = startOfDay(eventDate), now = startOfDay(today);
-  const total = days.prep + days.lead + days.ship;
-  const earliest = addDays(now, total);
-  const latest = addDays(ev, -(total + days.buffer));
-  const verdict = earliest > ev ? 'late' : latest >= now ? 'good' : 'tight';
-  return { earliest, latest, verdict };
+  i = Math.max(0, Math.min(SIZE_ORDER.length - 1, i));
+  let size: string = SIZE_ORDER[i];
+  if (!available.includes(size)) {
+    const last = available[available.length - 1];
+    size = idx(size) > idx(last) ? last : available.find(s => idx(s) >= i) ?? available[0];
+  }
+  const h = inp.height > 0 ? inp.height : 165;
+  return {
+    size,
+    ease: inp.bust > 0 ? Math.round(bustOf(size) + 8 - inp.bust) : null,
+    height: h >= 172 ? 'tall' : h < 158 ? 'short' : 'ok',
+  };
 }
 
 /** The price a customer pays: the sale price when one is set and lower. */

@@ -1,8 +1,8 @@
-/* The message the customer sends to the shop after placing an order, and the chat link that carries it.
+/* The message the customer sends to the shop after checkout, and the chat link that carries it.
    Shared by the shop (customer -> shop) and the admin order list (shop -> customer). */
-import type { Lang, Settings } from './types';
+import type { Lang, OrderItem, Settings } from './types';
 
-const LOCALE: Record<Lang, string> = { fa: 'fa-IR', ar: 'ar-OM', en: 'en-US' };
+export const LOCALE: Record<Lang, string> = { en: 'en-GB', ar: 'ar-OM', fa: 'fa-IR' };
 
 export const formatPrice = (p: number, lang: Lang, s: Pick<Settings, 'currency'>) =>
   `${p.toLocaleString(LOCALE[lang], { maximumFractionDigits: 3 })} ${s.currency[lang]}`;
@@ -11,17 +11,27 @@ export const formatNumber = (n: number, lang: Lang) => n.toLocaleString(LOCALE[l
 
 export interface OrderSummary {
   id: number;
-  garmentName: string;
-  size: string;
-  price: number;
+  items: OrderItem[];
+  total: number;
   customerName: string;
 }
 
+const HEAD: Record<Lang, (id: string) => string> = {
+  en: id => `Hello, order #${id}`,
+  ar: id => `مرحباً، طلب رقم ${id}`,
+  fa: id => `سلام، سفارش شمارهٔ ${id}`,
+};
+const WORDS: Record<Lang, { size: string; total: string; name: string }> = {
+  en: { size: 'Size', total: 'Total', name: 'Name' },
+  ar: { size: 'المقاس', total: 'المجموع', name: 'الاسم' },
+  fa: { size: 'سایز', total: 'جمع', name: 'نام' },
+};
+
 export function orderMessage(o: OrderSummary, lang: Lang, s: Pick<Settings, 'currency'>): string {
-  const id = formatNumber(o.id, lang), price = formatPrice(o.price, lang, s);
-  if (lang === 'ar') return `مرحباً، طلب رقم ${id}\n${o.garmentName}\nالمقاس: ${o.size}\nالسعر: ${price}\nالاسم: ${o.customerName}`;
-  if (lang === 'en') return `Hello, order #${id}\n${o.garmentName}\nSize: ${o.size}\nPrice: ${price}\nName: ${o.customerName}`;
-  return `سلام، سفارش شمارهٔ ${id}\n${o.garmentName}\nسایز: ${o.size}\nقیمت: ${price}\nنام: ${o.customerName}`;
+  const w = WORDS[lang];
+  const lines = o.items.map(i =>
+    `• ${i.name}${i.color ? ` (${i.color})` : ''} — ${w.size} ${i.size}${i.qty > 1 ? ` ×${formatNumber(i.qty, lang)}` : ''} — ${formatPrice(i.price * i.qty, lang, s)}`);
+  return [HEAD[lang](formatNumber(o.id, lang)), ...lines, `${w.total}: ${formatPrice(o.total, lang, s)}`, `${w.name}: ${o.customerName}`].join('\n');
 }
 
 /** Chat link for the shop's configured channel. Instagram cannot prefill text, so the UI copies it first. */

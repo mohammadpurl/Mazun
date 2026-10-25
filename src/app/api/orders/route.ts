@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { jsonBody } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { effectivePrice } from '@/lib/fit';
+import { buildOrder } from '@/lib/orders';
 import { allow, clientIp } from '@/lib/rate-limit';
 import { validateOrder } from '@/lib/validate';
 
-/** Public: the shop places an order here, then opens the shop's chat with the order number. */
+/** Public: checkout from the bag. Saves the order, then the shop opens its chat with the order number. */
 export async function POST(req: Request) {
   const body = await jsonBody(req);
   // Honeypot: the form has a hidden "website" field that people never fill in.
@@ -14,21 +14,12 @@ export async function POST(req: Request) {
 
   const r = validateOrder(body);
   if (!r.ok) return NextResponse.json({ errors: r.errors }, { status: 400 });
-  const input = r.value;
 
   const repo = db();
-  const g = input.garmentId ? await repo.getGarment(input.garmentId) : null;
-  if (!g || !g.visible) return NextResponse.json({ errors: { garmentId: 'unavailable' } }, { status: 409 });
-  if (g.categoryId) {
-    const cat = (await repo.listCategories()).find(c => c.id === g.categoryId);
-    if (cat && !cat.visible) return NextResponse.json({ errors: { garmentId: 'unavailable' } }, { status: 409 });
-  }
-  if (!g.sizes.some(s => s.n === input.size && s.ok)) return NextResponse.json({ errors: { size: 'soldout' } }, { status: 409 });
+  const [garments, categories] = await Promise.all([repo.listGarments(), repo.listCategories()]);
+  const built = buildOrder(r.value, garments, categories);
+  if (!built.ok) return NextResponse.json({ errors: { items: built.error }, garmentId: built.garmentId }, { status: 409 });
 
-  const order = await repo.createOrder({
-    ...input,
-    garmentName: g.name[input.lang] || g.name.fa || g.name.en || g.name.ar,
-    price: effectivePrice(g),
-  });
-  return NextResponse.json({ id: order.id, garmentName: order.garmentName, price: order.price }, { status: 201 });
+  const order = await repo.createOrder(built.order);
+  return NextResponse.json({ id: order.id, items: order.items, total: order.total }, { status: 201 });
 }

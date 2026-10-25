@@ -1,15 +1,16 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { L10n, Settings } from '@/lib/types';
+import type { Garment, HomeContent, L10n, Settings } from '@/lib/types';
 import { api } from './api';
+import { ImageField } from './fields';
 
 type L10nKey = 'brand' | 'tagline' | 'ticker' | 'currency' | 'originCity';
 const L10N_FIELDS: [L10nKey, string][] = [
   ['brand', 'نام برند'], ['tagline', 'زیرعنوان'], ['ticker', 'متن نوار پایین صفحه'], ['currency', 'واحد پول'], ['originCity', 'شهر مبدأ ارسال'],
 ];
 
-export function SettingsForm({ initial }: { initial: Settings }) {
+export function SettingsForm({ initial, garments }: { initial: Settings; garments: Garment[] }) {
   const router = useRouter();
   const [s, setS] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -17,6 +18,9 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => { setS(x => ({ ...x, [k]: v })); setMsg(null); };
   const setL = (k: L10nKey, l: keyof L10n, v: string) => set(k, { ...s[k], [l]: v });
+  const setHome = (o: Partial<HomeContent>) => set('home', { ...s.home, ...o });
+  const [uploading, setUploading] = useState(0);
+  const onBusy = (b: boolean) => setUploading(n => n + (b ? 1 : -1));
 
   async function save() {
     setBusy(true); setErrors({}); setMsg(null);
@@ -89,8 +93,26 @@ export function SettingsForm({ initial }: { initial: Settings }) {
         </div>
       </section>
 
+      <section className="card stack">
+        <h2>صفحهٔ اصلی</h2>
+        <p className="muted small" style={{ margin: 0 }}>تا عکسی گذاشته نشود، جای آن رنگ ملایم نمایش داده می‌شود. عکس‌ها خودکار کوچک و بهینه می‌شوند. عکس مجموعه‌ها در بخش «مجموعه‌ها» است. بعد از تغییر، «ذخیرهٔ تنظیمات» را بزنید.</p>
+        <label className="f" style={{ maxWidth: 420 }}>لباس معرفی‌شده زیر عکس اصلی
+          <select value={s.home.featuredId ?? ''} onChange={e => setHome({ featuredId: e.target.value || null })}>
+            <option value="">اولین لباس رگال</option>
+            {garments.filter(g => g.kind === 'garment').map(g => <option key={g.id} value={g.id}>{g.name.fa || g.name.en}</option>)}
+          </select>
+        </label>
+        <div className="imgs" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+          <ImageField label="عکس اصلی بالای صفحه (افقی، عریض)" value={s.home.hero} onChange={hero => setHome({ hero })} onBusy={onBusy} />
+          <ImageField label="نمای نزدیک پارچه (مربع)" value={s.home.fabric} onChange={fabric => setHome({ fabric })} onBusy={onBusy} />
+          <ImageField label="آتلیه (افقی، خیلی عریض)" value={s.home.atelier} onChange={atelier => setHome({ atelier })} onBusy={onBusy} />
+          <ImageField label="اتاق پرو: عکس نمونهٔ مشتری (۳ به ۴)" value={s.home.tryBefore} onChange={tryBefore => setHome({ tryBefore })} onBusy={onBusy} />
+          <ImageField label="اتاق پرو: همان مشتری با لباس (۳ به ۴)" value={s.home.tryAfter} onChange={tryAfter => setHome({ tryAfter })} onBusy={onBusy} />
+        </div>
+      </section>
+
       <div className="row">
-        <button type="button" className="btn" disabled={busy} onClick={save}>{busy ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</button>
+        <button type="button" className="btn" disabled={busy || uploading > 0} onClick={save}>{busy ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</button>
         {msg && <span className={`msg ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.text}</span>}
       </div>
     </div>

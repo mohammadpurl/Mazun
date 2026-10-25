@@ -2,15 +2,16 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { useState } from 'react';
+import { KIND_LABEL } from '@/lib/labels';
 import type { Category, Garment } from '@/lib/types';
 import { api, faNum } from './api';
 import { useReorder } from './useReorder';
 
-export function GarmentList({ initial, categories, currency }: { initial: Garment[]; categories: Category[]; currency: string }) {
+export function GarmentList({ initial, categories, currency, accessories }: { initial: Garment[]; categories: Category[]; currency: string; accessories: boolean }) {
   const [items, setItems] = useState(initial);
   const [err, setErr] = useState('');
   const { move, rowProps, error } = useReorder(items, setItems, '/api/admin/garments/reorder');
-  const catName = (id: string | null) => (id ? categories.find(c => c.id === id)?.name.fa ?? '—' : 'بدون دسته');
+  const catName = (g: Garment) => (g.kind !== 'garment' ? KIND_LABEL[g.kind] : g.categoryId ? categories.find(c => c.id === g.categoryId)?.name.fa ?? '—' : 'بدون مجموعه');
 
   async function toggle(g: Garment) {
     setErr('');
@@ -25,13 +26,17 @@ export function GarmentList({ initial, categories, currency }: { initial: Garmen
   return (
     <div className="stack">
       <div className="top">
-        <h1>لباس‌ها</h1>
-        <Link className="btn" href="/admin/garments/new">+ لباس جدید</Link>
+        <h1>محصولات</h1>
+        <Link className="btn" href={accessories ? '/admin/garments/new?kind=accessory' : '/admin/garments/new'}>{accessories ? '+ اکسسوری جدید' : '+ لباس جدید'}</Link>
+      </div>
+      <div className="row">
+        <Link className={`btn sm${accessories ? ' alt' : ''}`} href="/admin/garments">لباس‌ها (رگال)</Link>
+        <Link className={`btn sm${accessories ? '' : ' alt'}`} href="/admin/garments?kind=accessory">اکسسوری‌ها (استایلیست)</Link>
       </div>
       <div className="card stack" style={{ gap: 10 }}>
-        <p className="muted small" style={{ margin: 0 }}>ترتیب این فهرست همان ترتیب نمایش روی رگال سایت است. برای جابه‌جایی، ردیف را بکشید یا از دکمه‌های ▲▼ استفاده کنید.</p>
+        <p className="muted small" style={{ margin: 0 }}>{accessories ? 'ترتیب این فهرست ترتیب پیشنهاد استایلیست است.' : 'ترتیب این فهرست همان ترتیب نمایش روی رگال سایت است.'} برای جابه‌جایی، ردیف را بکشید یا از دکمه‌های ▲▼ استفاده کنید.</p>
         {(err || error) && <div className="msg err" role="alert">{err || error}</div>}
-        {items.length === 0 ? <p className="muted">هنوز لباسی ثبت نشده.</p> : (
+        {items.length === 0 ? <p className="muted">هنوز موردی ثبت نشده.</p> : (
           <div className="glist">
             {items.map((g, i) => {
               const rp = rowProps(g.id);
@@ -39,11 +44,11 @@ export function GarmentList({ initial, categories, currency }: { initial: Garmen
               return (
                 <div key={g.id} {...rp} className={`gi ${rp.className}${g.visible ? '' : ' off'}`}>
                   <span className="grip" aria-hidden="true">⋮⋮</span>
-                  <img src={g.front} alt="" />
+                  {g.front ? <img src={g.front} alt="" /> : <span className="swatch-thumb" style={{ background: g.colors[0]?.hex ?? '#ccc' }} aria-hidden="true" />}
                   <div className="meta">
                     <b>{g.name.fa || g.name.en}</b>
                     <span className="small muted">
-                      {catName(g.categoryId)} · {g.salePrice != null ? <><s>{faNum(g.price)}</s> {faNum(g.salePrice)}</> : faNum(g.price)} {currency}
+                      {catName(g)} · {g.salePrice != null ? <><s>{faNum(g.price)}</s> {faNum(g.salePrice)}</> : faNum(g.price)} {currency}
                       {out.length > 0 && <> · <span className="err">تمام‌شده: <span dir="ltr">{out.join(', ')}</span></span></>}
                     </span>
                   </div>

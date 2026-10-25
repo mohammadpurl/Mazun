@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 const LINKS = [
   { href: '/admin', label: 'داشبورد' },
   { href: '/admin/orders', label: 'سفارش‌ها' },
-  { href: '/admin/garments', label: 'لباس‌ها' },
-  { href: '/admin/categories', label: 'دسته‌بندی‌ها' },
+  { href: '/admin/garments', label: 'محصولات' },
+  { href: '/admin/categories', label: 'مجموعه‌ها' },
   { href: '/admin/settings', label: 'تنظیمات سایت' },
 ];
 

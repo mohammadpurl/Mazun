@@ -8,8 +8,9 @@ export async function GET(req: Request) {
   if (denied) return denied;
   const orders = await db().listOrders();
   const csv = toCsv([
-    ['شماره', 'تاریخ ثبت (UTC)', 'وضعیت', 'لباس', 'سایز', 'قیمت', 'نام مشتری', 'تلفن', 'شهر', 'آدرس', 'تاریخ مناسبت', 'یادداشت مشتری', 'یادداشت مدیر'],
-    ...orders.map(o => [o.id, o.createdAt.slice(0, 16).replace('T', ' '), STATUS_LABEL[o.status], o.garmentName, o.size, o.price,
+    ['شماره', 'تاریخ ثبت (UTC)', 'وضعیت', 'اقلام', 'تعداد قطعه', 'جمع', 'نام مشتری', 'تلفن', 'شهر', 'آدرس', 'تاریخ مناسبت', 'یادداشت مشتری', 'یادداشت مدیر'],
+    ...orders.map(o => [o.id, o.createdAt.slice(0, 16).replace('T', ' '), STATUS_LABEL[o.status],
+      o.items.map(i => `${i.name} | ${i.color} | ${i.size} | ×${i.qty} | ${i.price}`).join('\n'), o.items.reduce((a, i) => a + i.qty, 0), o.total,
       o.customerName, o.phone, o.city, o.address, o.eventDate ?? '', o.note, o.adminNote]),
   ]);
   return new Response(csv, {

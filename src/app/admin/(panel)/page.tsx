@@ -3,6 +3,7 @@ import { faId } from '@/components/admin/api';
 import { OrdersChart } from '@/components/admin/OrdersChart';
 import { db } from '@/lib/db';
 import { STATUS_LABEL } from '@/lib/labels';
+import { itemsSummary } from '@/lib/orders';
 import { dashboardStats } from '@/lib/stats';
 
 const n = (v: number) => v.toLocaleString('fa-IR', { maximumFractionDigits: 3 });
@@ -57,7 +58,7 @@ export default async function Dashboard() {
             <div className="tbl-wrap"><table className="tbl"><tbody>
               {recent.map(o => (
                 <tr key={o.id}>
-                  <td className="num">#{faId(o.id)}</td><td>{o.customerName}</td><td className="hide-sm">{o.garmentName} · {o.size}</td>
+                  <td className="num">#{faId(o.id)}</td><td>{o.customerName}</td><td className="hide-sm">{itemsSummary(o.items)}</td>
                   <td><span className={`st st-${o.status}`}>{STATUS_LABEL[o.status]}</span></td>
                 </tr>
               ))}

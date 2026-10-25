@@ -17,6 +17,7 @@ export interface DashboardStats {
   ordersMonth: number;
   /** Oldest first, `days` entries ending today. */
   perDay: { day: string; count: number }[];
+  /** Best sellers by pieces ordered (not cancelled). */
   topGarments: { name: string; count: number }[];
   soldOut: { garment: string; sizes: string[] }[];
 }
@@ -25,6 +26,7 @@ export function dashboardStats(orders: Order[], garments: Garment[], now = new D
   const today = dayKey(now, tz);
   const month = today.slice(0, 7);
   const live = orders.filter(o => o.status !== 'cancelled');
+  const nameOf = new Map(garments.map(g => [g.id, g.name.fa || g.name.en]));
 
   const perDay: DashboardStats['perDay'] = [];
   for (let i = days - 1; i >= 0; i--) perDay.push({ day: dayKey(new Date(now.getTime() - i * 86_400_000), tz), count: 0 });
@@ -35,10 +37,13 @@ export function dashboardStats(orders: Order[], garments: Garment[], now = new D
   for (const o of live) {
     const k = dayKey(new Date(o.createdAt), tz);
     if (k === today) ordersToday++;
-    if (k.startsWith(month)) { revenueMonth += o.price; ordersMonth++; }
+    if (k.startsWith(month)) { revenueMonth += o.total; ordersMonth++; }
     const i = index.get(k);
     if (i !== undefined) perDay[i].count++;
-    counts.set(o.garmentName, (counts.get(o.garmentName) ?? 0) + 1);
+    for (const it of o.items) {
+      const name = (it.garmentId && nameOf.get(it.garmentId)) || it.name;
+      counts.set(name, (counts.get(name) ?? 0) + it.qty);
+    }
   }
 
   return {

@@ -130,3 +130,5 @@ html:has(.adm),body:has(.adm){margin:0;background:#eef2f1}
   .adm .imgs{grid-template-columns:1fr}
   .adm .hide-sm{display:none}
 }
+.adm .swatch-thumb{width:44px;height:64px;border-radius:8px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.adm .drop .ph{height:200px;width:100%;display:grid;place-items:center;color:var(--muted);background:#f1f4f3;border-radius:8px;font-size:12px;padding:8px;text-align:center}

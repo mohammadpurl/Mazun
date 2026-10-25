@@ -3,15 +3,15 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { Category, L10n } from '@/lib/types';
 import { api, faNum } from './api';
+import { emptyL10n, ImageField, L10nFields } from './fields';
 import { useReorder } from './useReorder';
 
-const empty: L10n = { fa: '', ar: '', en: '' };
 
 export function CategoryManager({ initial, counts }: { initial: Category[]; counts: Record<string, number> }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<string | 'new' | null>(null);
-  const [draft, setDraft] = useState<{ name: L10n; visible: boolean }>({ name: { ...empty }, visible: true });
+  const [draft, setDraft] = useState<{ name: L10n; description: L10n; image: string; visible: boolean }>({ name: emptyL10n(), description: emptyL10n(), image: '', visible: true });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const { move, rowProps, error } = useReorder(items, setItems, '/api/admin/categories/reorder');
@@ -19,7 +19,7 @@ export function CategoryManager({ initial, counts }: { initial: Category[]; coun
   function edit(c: Category | null) {
     setErr('');
     setEditing(c ? c.id : 'new');
-    setDraft(c ? { name: { ...c.name }, visible: c.visible } : { name: { ...empty }, visible: true });
+    setDraft(c ? { name: { ...c.name }, description: { ...c.description }, image: c.image, visible: c.visible } : { name: emptyL10n(), description: emptyL10n(), image: '', visible: true });
   }
 
   async function save() {
@@ -34,21 +34,16 @@ export function CategoryManager({ initial, counts }: { initial: Category[]; coun
 
   async function remove(c: Category) {
     const n = counts[c.id] ?? 0;
-    if (!confirm(`دستهٔ «${c.name.fa || c.name.en}» حذف شود؟${n ? ` ${faNum(n)} لباس این دسته «بدون دسته» می‌شوند و حذف نمی‌شوند.` : ''}`)) return;
+    if (!confirm(`مجموعهٔ «${c.name.fa || c.name.en}» حذف شود؟${n ? ` ${faNum(n)} لباس این دسته «بدون مجموعه» می‌شوند و حذف نمی‌شوند.` : ''}`)) return;
     try { await api(`/api/admin/categories/${c.id}`, 'DELETE'); setItems(l => l.filter(x => x.id !== c.id)); router.refresh(); }
     catch (e) { setErr((e as Error).message); }
   }
 
   const form = (
     <div className="card stack" style={{ gap: 10, background: '#f8faf9' }}>
-      <div className="grid">
-        {(['fa', 'ar', 'en'] as const).map(l => (
-          <label key={l} className="f">نام {{ fa: 'فارسی', ar: 'عربی', en: 'انگلیسی' }[l]}
-            <input value={draft.name[l]} dir={l === 'en' ? 'ltr' : 'rtl'} maxLength={60} autoFocus={l === 'fa'}
-              onChange={e => setDraft({ ...draft, name: { ...draft.name, [l]: e.target.value } })} />
-          </label>
-        ))}
-      </div>
+      <L10nFields label="نام مجموعه" value={draft.name} onChange={name => setDraft({ ...draft, name })} max={60} />
+      <L10nFields label="توضیح کوتاه (زیر عکس در صفحهٔ اصلی)" value={draft.description} onChange={description => setDraft({ ...draft, description })} max={200} />
+      <div style={{ maxWidth: 320 }}><ImageField label="عکس مجموعه (عمودی)" value={draft.image} onChange={image => setDraft({ ...draft, image })} /></div>
       <label className="check"><input type="checkbox" checked={draft.visible} onChange={e => setDraft({ ...draft, visible: e.target.checked })} /> در سایت نمایش داده شود</label>
       <div className="row">
         <button type="button" className="btn" disabled={busy} onClick={save}>ذخیره</button>
@@ -60,14 +55,14 @@ export function CategoryManager({ initial, counts }: { initial: Category[]; coun
   return (
     <div className="stack">
       <div className="top">
-        <h1>دسته‌بندی‌ها</h1>
-        <button type="button" className="btn" onClick={() => edit(null)}>+ دستهٔ جدید</button>
+        <h1>مجموعه‌ها</h1>
+        <button type="button" className="btn" onClick={() => edit(null)}>+ مجموعهٔ جدید</button>
       </div>
       <div className="card stack" style={{ gap: 10 }}>
-        <p className="muted small" style={{ margin: 0 }}>دسته‌ها در سایت به صورت دکمه‌های فیلتر بالای رگال نمایش داده می‌شوند (وقتی بیش از یک دستهٔ دارای لباس باشد). لباس‌های یک دستهٔ مخفی هم در سایت دیده نمی‌شوند.</p>
+        <p className="muted small" style={{ margin: 0 }}>چهار مجموعهٔ اول (به همین ترتیب) با عکس و توضیح در صفحهٔ اصلی نمایش داده می‌شوند و همهٔ مجموعه‌های دارای لباس، فیلتر رگال هستند. لباس‌های یک مجموعهٔ مخفی در سایت دیده نمی‌شوند.</p>
         {(err || error) && <div className="msg err" role="alert">{err || error}</div>}
         {editing === 'new' && form}
-        {items.length === 0 && editing !== 'new' && <p className="muted">هنوز دسته‌ای ساخته نشده.</p>}
+        {items.length === 0 && editing !== 'new' && <p className="muted">هنوز مجموعه‌ای ساخته نشده.</p>}
         <div className="glist">
           {items.map((c, i) => {
             const rp = rowProps(c.id);

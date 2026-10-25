@@ -14,12 +14,12 @@ async function repo() {
 }
 after(async () => { await Promise.all(dirs.map(d => rm(d, { recursive: true, force: true }))); });
 
-const order = { garmentId: 'g1', garmentName: 'Royal', size: 'M', price: 55, customerName: 'Sara', phone: '96891234567', city: '', address: '', note: '', eventDate: null, lang: 'fa' as const };
+const order = { items: [{ garmentId: 'zayna', name: 'Zayna', size: 'M', color: 'Olive', qty: 1, price: 168 }], total: 168, customerName: 'Sara', phone: '96891234567', city: '', address: '', note: '', eventDate: null, lang: 'en' as const };
 
 test('an empty store starts with the seed catalogue', async () => {
   const r = await repo();
   assert.equal((await r.listGarments()).length, SEED_GARMENTS.length);
-  assert.equal((await r.listCategories()).length, 2);
+  assert.equal((await r.listCategories()).length, 4);
   assert.equal((await r.listOrders()).length, 0);
 });
 
@@ -42,14 +42,14 @@ test('reorder and delete garments; deleting a category un-categorises its garmen
   assert.deepEqual((await r.listGarments()).map(g => g.id), [...ids].reverse());
   await r.deleteGarment(ids[0]);
   assert.equal((await r.listGarments()).length, ids.length - 1);
-  await r.deleteCategory('c2');
-  assert.equal((await r.getGarment('g8'))?.categoryId, null);
+  await r.deleteCategory('evening');
+  assert.equal((await r.getGarment('layal'))?.categoryId, null);
 });
 
 test('create/update keep id, sort and createdAt under server control', async () => {
   const r = await repo();
   const { id: _id, sort: _sort, createdAt: _c, ...input } = SEED_GARMENTS[0];
-  const g = await r.createGarment({ ...input, name: { fa: 'تازه', ar: '', en: '' } });
+  const g = await r.createGarment({ ...input, name: { fa: 'تازه', ar: '', en: 'New' } });
   assert.match(g.id, /^g/);
   assert.equal(g.sort, SEED_GARMENTS.length + 1);
   const u = await r.updateGarment(g.id, { ...g, price: 99 });

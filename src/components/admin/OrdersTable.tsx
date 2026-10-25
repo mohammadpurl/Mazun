@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { OPEN_STATUSES, STATUS_LABEL } from '@/lib/labels';
 import { customerWhatsAppLink } from '@/lib/order-message';
+import { itemsSummary } from '@/lib/orders';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types';
 import { api, faDate, faId, faNum } from './api';
 
@@ -21,7 +22,7 @@ export function OrdersTable({ initial, currency, initialStatus }: { initial: Ord
     const s = q.trim().toLowerCase().replace(/^#/, '');
     return orders.filter(o =>
       (filter === 'all' || (filter === 'open' ? OPEN_STATUSES.includes(o.status) : o.status === filter)) &&
-      (!s || String(o.id) === s || o.customerName.toLowerCase().includes(s) || o.phone.includes(s.replace(/\D/g, '') || '\u0000') || o.garmentName.toLowerCase().includes(s)));
+      (!s || String(o.id) === s || o.customerName.toLowerCase().includes(s) || o.phone.includes(s.replace(/\D/g, '') || '\u0000') || o.items.some(i => i.name.toLowerCase().includes(s))));
   }, [orders, filter, q]);
   const count = (f: Filter) => orders.filter(o => f === 'all' || (f === 'open' ? OPEN_STATUSES.includes(o.status) : o.status === f)).length;
 
@@ -57,15 +58,15 @@ export function OrdersTable({ initial, currency, initialStatus }: { initial: Ord
         {shown.length === 0 ? <p className="muted">{orders.length ? 'سفارشی با این فیلتر نیست.' : 'هنوز سفارشی ثبت نشده. سفارش‌هایی که مشتری‌ها در سایت ثبت کنند این‌جا می‌آیند.'}</p> : (
           <div className="tbl-wrap">
             <table className="tbl">
-              <thead><tr><th>شماره</th><th>تاریخ</th><th>مشتری</th><th className="hide-sm">لباس</th><th className="hide-sm">مبلغ</th><th>وضعیت</th></tr></thead>
+              <thead><tr><th>شماره</th><th>تاریخ</th><th>مشتری</th><th className="hide-sm">اقلام</th><th className="hide-sm">مبلغ</th><th>وضعیت</th></tr></thead>
               <tbody>
                 {shown.map(o => (
                   <tr key={o.id} className={`clickable${openId === o.id ? ' sel' : ''}`} onClick={() => setOpenId(o.id)}>
                     <td className="num"><button type="button" className="icon-btn" style={{ width: 'auto', padding: '0 8px' }} onClick={() => setOpenId(o.id)} aria-label={`جزئیات سفارش ${o.id}`}>#{faId(o.id)}</button></td>
                     <td className="small muted num">{faDate(o.createdAt)}</td>
                     <td>{o.customerName}<div className="small muted" dir="ltr" style={{ textAlign: 'end' }}>+{o.phone}</div></td>
-                    <td className="hide-sm">{o.garmentName} · <b>{o.size}</b></td>
-                    <td className="hide-sm num">{faNum(o.price)} {currency}</td>
+                    <td className="hide-sm">{itemsSummary(o.items)}</td>
+                    <td className="hide-sm num">{faNum(o.total)} {currency}</td>
                     <td onClick={e => e.stopPropagation()}>
                       <select value={o.status} aria-label={`وضعیت سفارش ${o.id}`} onChange={e => patch(o.id, { status: e.target.value as OrderStatus })}>
                         {ORDER_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
@@ -86,7 +87,7 @@ export function OrdersTable({ initial, currency, initialStatus }: { initial: Ord
 function OrderDrawer({ o, currency, onClose, onPatch }: { o: Order; currency: string; onClose: () => void; onPatch: (b: Partial<Order>) => Promise<boolean> }) {
   const [note, setNote] = useState(o.adminNote);
   const [saved, setSaved] = useState('');
-  const greeting = `سلام ${o.customerName}، دربارهٔ سفارش شمارهٔ ${o.id} (${o.garmentName}، سایز ${o.size}) با شما تماس می‌گیریم.`;
+  const greeting = `سلام ${o.customerName}، دربارهٔ سفارش شمارهٔ ${o.id} (${itemsSummary(o.items)}) با شما تماس می‌گیریم.`;
   return (
     <>
       <div className="scrim" onClick={onClose} />
@@ -94,9 +95,8 @@ function OrderDrawer({ o, currency, onClose, onPatch }: { o: Order; currency: st
         <div className="row"><h2 style={{ margin: 0 }}>سفارش #{faId(o.id)}</h2><span className="spacer" /><button type="button" className="icon-btn" onClick={onClose} aria-label="بستن">✕</button></div>
         <span className={`st st-${o.status}`} style={{ alignSelf: 'flex-start' }}>{STATUS_LABEL[o.status]}</span>
         <dl>
-          <dt>لباس</dt><dd>{o.garmentName}</dd>
-          <dt>سایز</dt><dd>{o.size}</dd>
-          <dt>مبلغ</dt><dd>{faNum(o.price)} {currency}</dd>
+          <dt>اقلام</dt><dd><ul style={{ margin: 0, paddingInlineStart: 18 }}>{o.items.map((i, k) => <li key={k}>{i.name}{i.color ? ` (${i.color})` : ''} · سایز <span dir="ltr">{i.size}</span> · {faNum(i.qty)} عدد · {faNum(i.price * i.qty)} {currency}</li>)}</ul></dd>
+          <dt>جمع</dt><dd>{faNum(o.total)} {currency}</dd>
           <dt>مشتری</dt><dd>{o.customerName}</dd>
           <dt>تلفن</dt><dd dir="ltr" style={{ textAlign: 'end' }}>+{o.phone}</dd>
           <dt>شهر</dt><dd>{o.city || '—'}</dd>

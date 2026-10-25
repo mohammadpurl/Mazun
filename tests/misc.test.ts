@@ -25,19 +25,21 @@ test('sniffImage trusts bytes, not names', () => {
   assert.equal(sniffImage(new TextEncoder().encode('<svg onload=alert(1)>')), null);
 });
 
-test('publicCatalog hides hidden garments, garments of hidden categories and empty categories', () => {
-  const cats = [{ ...SEED_CATEGORIES[0] }, { ...SEED_CATEGORIES[1], visible: false }, { id: 'c3', name: { fa: 'خالی', ar: '', en: '' }, sort: 3, visible: true }];
-  const gs = SEED_GARMENTS.map((g, i) => ({ ...g, visible: i !== 0 }));
+test('publicCatalog hides hidden products, garments of hidden collections and collections without garments', () => {
+  const cats = [...SEED_CATEGORIES.map(c => (c.id === 'evening' ? { ...c, visible: false } : c)), { ...SEED_CATEGORIES[0], id: 'empty', sort: 9 }];
+  const gs = SEED_GARMENTS.map(g => ({ ...g, visible: g.id !== 'zayna' }));
   const r = publicCatalog(cats, gs);
-  assert.equal(r.garments.length, 6, '8 seed garments minus 1 hidden minus 1 in a hidden category');
-  assert.deepEqual(r.categories.map(c => c.id), ['c1']);
+  assert.equal(r.garments.length, 16 - 1 - 2, 'hidden Zayna and the two evening pieces are out; accessories stay');
+  assert.deepEqual(r.categories.map(c => c.id), ['abayas', 'modest', 'atelier']);
 });
 
 test('order message and chat links', () => {
   const s = { ...DEFAULT_SETTINGS, whatsapp: '96891234567' };
-  const msg = orderMessage({ id: 1001, garmentName: 'Navy', size: 'M', price: 48, customerName: 'Sara' }, 'en', s);
+  const msg = orderMessage({ id: 1001, total: 144, customerName: 'Sara', items: [{ garmentId: 'a', name: 'Navy', size: 'M', color: 'Olive', qty: 2, price: 48 }, { garmentId: 'b', name: 'Clutch', size: 'ONE', color: '', qty: 1, price: 48 }] }, 'en', s);
   assert.match(msg, /order #1001/);
-  assert.match(msg, /48 OMR/);
+  assert.ok(msg.includes('• Navy (Olive) — Size M ×2 — 96 OMR'), msg);
+  assert.match(msg, /Total: 144 OMR/);
+  assert.match(orderMessage({ id: 1002, total: 5, customerName: 'س', items: [] }, 'fa', s), /سفارش شمارهٔ ۱۰۰۲/);
   assert.match(shopChatLink(s, msg)!, /^https:\/\/wa\.me\/96891234567\?text=Hello/);
   assert.equal(shopChatLink({ ...s, whatsapp: '' }, msg), null);
   assert.equal(shopChatLink({ ...s, channel: 'instagram', instagram: 'shop' }, msg), 'https://ig.me/m/shop');
@@ -53,8 +55,8 @@ test('rate limiter allows the limit, then blocks until the window resets', () =>
 
 test('dashboardStats counts by shop day and leaves cancelled orders out of revenue', () => {
   const now = new Date('2026-10-19T10:00:00Z'); // 14:00 in Muscat
-  const mk = (id: number, createdAt: string, status: Order['status'], price = 10): Order => ({
-    id, createdAt, updatedAt: createdAt, status, price, garmentId: 'g1', garmentName: id % 2 ? 'A' : 'B', size: 'M',
+  const mk = (id: number, createdAt: string, status: Order['status'], total = 10): Order => ({
+    id, createdAt, updatedAt: createdAt, status, total, items: [{ garmentId: null, name: id % 2 ? 'A' : 'B', size: 'M', color: '', qty: 1, price: total }],
     customerName: 'x', phone: '1', city: '', address: '', note: '', eventDate: null, lang: 'fa', adminNote: '',
   });
   const orders = [

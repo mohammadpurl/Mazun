@@ -8,10 +8,12 @@
     "start": "next start -p 5188",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "seed:supabase": "node --env-file=.env.local --import tsx scripts/seed-supabase.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
+    "@phosphor-icons/web": "2.1.2",
     "@supabase/supabase-js": "2.117.2",
     "next": "15.5.27",
     "react": "19.2.8",
