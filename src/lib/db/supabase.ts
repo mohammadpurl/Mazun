@@ -133,6 +133,20 @@ export class SupabaseRepo implements Repo {
     return this.sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl + '?v=' + Date.now();
   }
 
+  /** Problems that would break the shop: missing tables (schema.sql not run) or a missing / private image bucket. */
+  async healthCheck(): Promise<string[]> {
+    const problems: string[] = [];
+    for (const t of ['categories', 'garments', 'orders', 'settings']) {
+      // A real (1-row) read: head-only requests do not report a missing table.
+      const { error } = await this.sb.from(t).select('*').limit(1);
+      if (error) problems.push(`table "${t}": ${error.message} — run supabase/schema.sql in the SQL Editor`);
+    }
+    const { data, error } = await this.sb.storage.getBucket(BUCKET);
+    if (error || !data) problems.push(`storage bucket "${BUCKET}" not found — run supabase/schema.sql`);
+    else if (!data.public) problems.push(`storage bucket "${BUCKET}" is private — images would not show; make it public`);
+    return problems;
+  }
+
   /** Loads the design's starter catalogue into empty tables (scripts/seed-supabase.ts). Returns what was inserted. */
   async seedIfEmpty(): Promise<string[]> {
     const done: string[] = [];
