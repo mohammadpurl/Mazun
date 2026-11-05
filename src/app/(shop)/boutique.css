@@ -38,12 +38,8 @@ html:has(.btq),body:has(.btq){margin:0;background:#F7F4EF}
   border:1px solid var(--ink);border-radius:2px;font-size:14px;font-weight:600;letter-spacing:.08em;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s}
 .btq .btn:hover{background:var(--ink-2);border-color:var(--ink-2);color:var(--ivory)}
 .btq .btn.block{width:100%;min-height:54px;font-size:15px;letter-spacing:.06em}
-.btq .btn.light{background:var(--ivory);color:var(--ink);border-color:var(--ivory)}
-.btq .btn.light:hover{background:var(--sand);border-color:var(--sand);color:var(--ink)}
 .btq .btn.ghost{background:transparent;color:var(--ink);border-color:rgba(41,35,31,.34)}
 .btq .btn.ghost:hover{background:rgba(41,35,31,.06)}
-.btq .btn.on-dark{background:transparent;color:var(--ivory);border-color:rgba(247,244,239,.7)}
-.btq .btn.on-dark:hover{background:rgba(247,244,239,.12)}
 .btq .btn:disabled,.btq .btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
 .btq .btn.sm{min-height:46px;padding:0 14px;font-size:14px;font-weight:400;letter-spacing:0;flex:1 1 auto;white-space:nowrap}
 .btq .tlink{background:none;border:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--olive-7);display:inline-flex;gap:8px;align-items:center;padding:8px 0;white-space:nowrap;text-decoration:none}
@@ -92,7 +88,6 @@ html:has(.btq),body:has(.btq){margin:0;background:#F7F4EF}
 
 /* header */
 .btq .hdr{position:fixed;top:0;inset-inline:0;z-index:40;background:rgba(247,244,239,.97);color:var(--ink);box-shadow:0 1px 0 rgba(41,35,31,.1);transition:background .4s,color .4s,box-shadow .4s}
-.btq .hdr.clear{background:transparent;color:var(--ivory);box-shadow:none}
 .btq .hdr-in{max-width:var(--max);margin:0 auto;height:72px;padding:0 clamp(20px,4vw,56px);display:flex;align-items:center;gap:28px}
 .btq .brand{background:none;border:none;color:inherit;cursor:pointer;font-size:16px;font-weight:600;letter-spacing:.32em;padding:0;white-space:nowrap;text-decoration:none}
 .btq .hdr nav{flex:1;min-width:0;overflow:hidden;display:flex;justify-content:center;gap:clamp(16px,2vw,36px)}
@@ -127,15 +122,6 @@ html:has(.btq),body:has(.btq){margin:0;background:#F7F4EF}
 .btq .menu .foot{margin-top:auto;display:flex;gap:24px;align-items:center;flex-wrap:wrap;font-size:15px;padding-top:24px}
 
 /* hero */
-.btq .hero{position:relative;height:max(620px,100vh);height:max(620px,100svh);background:#3B322C;color:var(--ivory);overflow:hidden}
-.btq .hero .scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(28,23,20,.42),rgba(28,23,20,0) 24%),linear-gradient(to top,rgba(28,23,20,.74),rgba(28,23,20,.18) 46%,rgba(28,23,20,0) 70%)}
-.btq .hero .copy{position:absolute;inset-inline:clamp(20px,5vw,80px);bottom:clamp(36px,9vh,104px);display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:32px}
-.btq .hero h1{margin:0;font-weight:400;font-size:clamp(46px,7.2vw,112px);line-height:1.04;letter-spacing:-.022em}
-.btq .hero h1 span{display:block}
-.btq .hero h1 em{display:block}
-.btq .hero p{margin:0;font-size:clamp(17px,1.4vw,20px);max-width:40ch;color:#F1ECE4}
-.btq .hero .cap{background:none;border:none;color:#F1ECE4;cursor:pointer;font-size:13px;letter-spacing:.06em;display:flex;align-items:center;gap:10px;padding:8px 0}
-.btq .hero .cap:hover{color:#fff}
 
 /* collections */
 .btq .cols{max-width:var(--max);margin:0 auto;padding:clamp(80px,10vw,152px) var(--pad) clamp(64px,8vw,120px)}
@@ -152,74 +138,76 @@ html:has(.btq),body:has(.btq){margin:0;background:#F7F4EF}
 .btq .fabric figcaption{font-size:13px;font-style:italic;color:rgba(41,35,31,.7)}
 
 /* rack */
-.btq .rack{position:relative;background:radial-gradient(120% 70% at 50% 0%,#F1EBE2 0%,#E8DFD3 55%,#DDD2C3 100%);padding:clamp(72px,8vw,112px) 0 clamp(56px,6vw,88px);overflow:hidden}
-.btq .rack-head{max-width:var(--max);margin:0 auto;padding:0 var(--pad);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:28px}
-.btq .rack-filters{display:flex;flex-wrap:wrap;gap:4px 22px}
-.btq .rack-filters button{background:none;border:none;cursor:pointer;font-size:14px;padding:8px 0;color:rgba(41,35,31,.66);text-underline-offset:7px;text-decoration-thickness:1px}
-.btq .rack-filters button[aria-pressed=true]{color:var(--ink);text-decoration-line:underline}
-.btq .rack-arrows{display:flex;gap:8px}
-.btq .rack-arrows button{width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line);border-radius:2px;cursor:pointer}
-.btq .rack-arrows button:hover:not(:disabled){background:rgba(41,35,31,.06)}
-.btq .rack-arrows button:disabled{opacity:.35;cursor:default}
-@media (pointer:coarse){.btq .rack-filters button{min-height:44px}}
-.btq .rack-body{position:relative;margin-top:clamp(48px,6vw,80px)}
-.btq .rack .post{position:absolute;top:-36px;width:4px;height:64px;transform-origin:50% 100%;background:linear-gradient(90deg,#4A3D31,#B79B76 50%,#4A3D31)}
-.btq .rack .post.s{inset-inline-start:clamp(14px,4vw,64px)}
-.btq .rack .post.e{inset-inline-end:clamp(14px,4vw,64px)}
-.btq .rack .rail{position:absolute;top:22px;inset-inline:clamp(8px,3.4vw,56px);height:9px;border-radius:5px;background:linear-gradient(180deg,#E2CDA9 0%,#B59872 22%,#7A6550 55%,#4E4034 82%,#3A2F27 100%);box-shadow:0 8px 14px rgba(41,35,31,.22)}
-.btq .rack-scroll{position:relative;z-index:2;display:flex;gap:var(--gap,56px);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;
-  padding:0 clamp(40px,8vw,140px) 28px;scroll-padding-inline:clamp(40px,8vw,140px)}
 @media (hover:hover) and (pointer:fine){.btq .rack-scroll{cursor:grab}}
 .btq .rack-scroll.dragging{cursor:grabbing;scroll-snap-type:none}
 .btq .rack-scroll.settling{scroll-snap-type:none}
 @media (hover:hover) and (pointer:fine){.btq .rack-scroll{user-select:none}}
 .btq .rack-scroll.dragging button{cursor:grabbing}
-.btq .rack-scroll img{-webkit-user-drag:none}
-.btq .slot{flex:none;scroll-snap-align:start}
 
 .btq .rack-scroll::-webkit-scrollbar{display:none}
-.btq .piece{width:var(--w,232px);display:flex;flex-direction:column;align-items:center;}
-.btq .piece .hang,.btq .piece .swing{width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 14px}
-.btq .piece .hang{transition:transform .8s cubic-bezier(.3,.7,.2,1)}
-/* Idle sway: each garment rocks gently on its hook, out of step with its neighbours. Uses the separate rotate
-   property so it composes with the lean transform; stops on the active piece and under reduced motion. */
-.btq .piece .hang{animation:sway 6.5s ease-in-out infinite;animation-delay:calc(var(--i,0) * -1.3s)}
-.btq .piece.on .hang{animation-play-state:paused}
-@keyframes sway{0%,100%{rotate:-.6deg}50%{rotate:.6deg}}
-.btq .piece .hanger{display:block;position:relative;z-index:3;transition:transform .9s cubic-bezier(.3,.7,.2,1)}
-.btq .piece .body{position:relative;width:100%;aspect-ratio:2/3;margin-top:-6px;perspective:1600px;cursor:pointer;transition:transform .9s cubic-bezier(.3,.7,.2,1);border:0;background:none;padding:0}
-.btq .piece.on .body,.btq .piece.on .hanger{transform:translateY(-6px)}
-.btq .piece .turn{position:absolute;inset:0;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.65,.05,.25,1)}
-.btq .piece.on .turn{transform:rotateY(180deg)}
-.btq .piece .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.btq .piece .face.b{transform:rotateY(180deg)}
-.btq .piece .body:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
-.btq .piece .face.b .tag{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);pointer-events:none}
-.btq .piece .new{position:absolute;top:8px;inset-inline-start:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive-7)}
-.btq .piece .meta{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
-.btq .piece .meta .n{font-size:18px;line-height:1.2}
-.btq .piece .meta .t{font-size:14px;color:rgba(41,35,31,.72)}
-.btq .piece .meta .type{line-height:1.3;min-height:2.6em}
-.btq .piece .meta s{color:rgba(41,35,31,.5)}
-.btq .piece .explore{margin-top:8px;opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .4s,transform .4s}
-.btq .piece.on .explore,.btq.touch .piece .explore{opacity:1;transform:none;pointer-events:auto}
 .btq .progress{max-width:var(--max);margin:8px auto 0;padding:0 clamp(40px,8vw,140px)}
 .btq .progress div{position:relative;height:2px;background:rgba(41,35,31,.12)}
 .btq .progress span{position:absolute;top:0;bottom:0;background:var(--ink);transition:inset-inline-start .15s linear}
+.btq .rack{position:relative;min-height:100svh;background:radial-gradient(120% 70% at 50% 0%,#F4EFE7 0%,#ECE4D8 60%,#E2D8CA 100%);padding:clamp(88px,11vh,112px) 0 clamp(24px,4vh,40px);overflow:hidden;display:flex;flex-direction:column}
+.btq .rack-head{padding:0 var(--pad);text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.btq .rack-title{margin:0;font-weight:400;font-size:clamp(28px,3.4vw,44px);line-height:1.1;letter-spacing:-.015em}
+.btq .rack-body{position:relative;margin-top:clamp(44px,7vh,64px)}
+.btq .rack .post{position:absolute;top:-34px;width:4px;height:50px;transform-origin:50% 100%;background:linear-gradient(90deg,#8A6F3F,#D8BC84 50%,#8A6F3F)}
+.btq .rack .post.s{inset-inline-start:clamp(14px,4vw,64px)}
+.btq .rack .post.e{inset-inline-end:clamp(14px,4vw,64px)}
+.btq .rack .rail{position:absolute;top:10px;inset-inline:clamp(8px,3.4vw,56px);height:6px;border-radius:3px;background:linear-gradient(180deg,#F0DDB2 0%,#C7A566 35%,#8A6F3F 80%,#6F5730 100%);box-shadow:0 6px 12px rgba(41,35,31,.2)}
+.btq .rack-scroll{position:relative;z-index:2;display:flex;justify-content:safe center;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:x proximity;padding:0 calc((var(--w) - var(--slot)) / 2 + 12px) 12px}
+.btq .slot{position:relative;flex:none;width:var(--slot);height:calc(var(--w) * 2.2 + 32px);scroll-snap-align:center}
+.btq .slot.on{z-index:5}
+.btq .arrive{height:100%;transform-origin:50% 16px}
+.btq .piece{pointer-events:none;height:100%;width:var(--w);margin-inline-start:calc((var(--slot) - var(--w)) / 2)}
+.btq .piece .hang,.btq .piece .swing{height:100%;width:100%;transform-origin:50% 16px}
+/* Idle sway: each garment rocks gently on its hook, out of step with its neighbours. Uses the separate rotate
+   property so it composes with the parting transform; pauses on the active piece and under reduced motion. */
+.btq .piece .hang{transition:transform .7s cubic-bezier(.3,.7,.2,1);animation:sway 6.5s ease-in-out infinite;animation-delay:calc(var(--i,0) * -1.3s)}
+.btq .piece.on .hang{animation-play-state:paused}
+@keyframes sway{0%,100%{rotate:-.5deg}50%{rotate:.5deg}}
+.btq .piece .body{position:relative;display:block;width:100%;height:100%;perspective:1400px;cursor:pointer;border:0;background:none;padding:0;pointer-events:none}
+/* A piece is much wider than its slot. Only the strip over the slot takes the pointer, so the piece you point at is the one that turns. */
+.btq .piece .body::before{content:'';position:absolute;inset:0 calc((var(--w) - var(--slot)) / 2);pointer-events:auto;z-index:2}
+.btq .piece.on .body::before{inset:0}
+.btq .piece .body:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.btq .piece .turn{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateY(-68deg);transition:transform .9s cubic-bezier(.5,.05,.2,1)}
+.btq[dir=rtl] .piece .turn{transform:rotateY(68deg)}
+.btq .piece.on .turn,.btq[dir=rtl] .piece.on .turn{transform:rotateY(180deg)}
+.btq .piece .hanger{position:absolute;top:0;left:19%;width:62%;height:auto;pointer-events:none;transform:translateZ(0)}
+.btq .piece .face{position:absolute;inset:32px 0 0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:translateZ(-1px)}
+.btq .piece .face.b{transform:rotateY(180deg) translateZ(-1px)}
+.btq .piece .contain{object-position:50% 0}
+.btq .rack-scroll img{-webkit-user-drag:none}
+.btq .rack-caption{min-height:96px;margin-top:8px;padding:0 var(--pad);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center}
+.btq .rack-caption .n{font-size:20px;line-height:1.2}
+.btq .rack-caption .t{font-size:14px;color:rgba(41,35,31,.72)}
+.btq .rack-caption s{color:rgba(41,35,31,.5)}
+.btq .rack-caption .hint{font-size:15px;font-style:italic;color:rgba(41,35,31,.74)}
+.btq .rack-filters{margin-top:auto;padding:12px var(--pad) 0;display:flex;flex-wrap:wrap;justify-content:center;gap:0 22px}
+.btq .rack-filters button{background:none;border:none;cursor:pointer;font-size:14px;min-height:44px;padding:8px 0;color:rgba(41,35,31,.66);text-underline-offset:7px;text-decoration-thickness:1px}
+.btq .rack-filters button[aria-pressed=true]{color:var(--ink);text-decoration-line:underline}
+.btq .ai{max-width:var(--max);margin:0 auto;padding:clamp(72px,9vw,128px) var(--pad) 0}
+.btq .ai-head{display:flex;flex-direction:column;gap:14px;margin-bottom:clamp(32px,4vw,56px);max-width:820px}
+.btq .ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:clamp(24px,3vw,40px)}
+.btq .ai-card{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.btq .ai-card .pic{position:relative;width:100%;aspect-ratio:4/5;background:var(--sand);overflow:hidden;margin-bottom:8px}
+.btq .ai-card .in{position:absolute;inset:6% 12%}
+.btq .ai-card .set .in{inset:6% 34% 6% 4%}
+.btq .ai-card .acc-tile{position:absolute;inset-inline-end:5%;width:27%;aspect-ratio:1/1;top:14%}
+.btq .ai-card .acc-tile + .acc-tile{top:50%}
+.btq .ai-card p{margin:0;font-size:15px;color:rgba(41,35,31,.8);flex:1}
+.btq .ai > .note{margin-top:24px}
+.btq .tile-art{position:absolute;inset:5% 16%}
+.btq .pd-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(247,244,239,.86);z-index:2}
+.btq .pd-nav.prev{inset-inline-start:12px}
+.btq .pd-nav.next{inset-inline-end:12px}
+.btq .pd-nav i{font-size:20px}
+.btq .pd-count{position:absolute;bottom:14px;inset-inline-end:16px;font-size:13px;color:rgba(41,35,31,.72)}
 .btq .rack-empty{padding:80px var(--pad);text-align:center;font-style:italic;color:var(--muted)}
-@media (max-width:719px){.btq .slot{scroll-snap-align:center}.btq .rack-scroll{padding-inline:calc(50% - var(--w,232px) / 2);scroll-padding-inline:0}}
 
 /* teasers */
-.btq .teaser{max-width:var(--max);margin:0 auto;padding:clamp(88px,10vw,152px) var(--pad) 0;display:flex;flex-wrap:wrap;gap:clamp(36px,6vw,104px);align-items:center}
-.btq .teaser.rev{flex-wrap:wrap-reverse}
-.btq .teaser .text{flex:4 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px;max-width:520px}
-.btq .pair{flex:5 1 360px;min-width:0;display:flex;gap:12px}
-.btq .pair > div{flex:1;display:flex;flex-direction:column;gap:10px}
-.btq .pair > div + div{margin-top:64px}
-.btq .pair .pic{position:relative;aspect-ratio:3/4;background:var(--sand);overflow:hidden}
-.btq .compo{flex:5 1 360px;min-width:0;background:var(--sand);padding:clamp(20px,3vw,40px);display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(12px,2vw,24px)}
-.btq .compo > :first-child{grid-row:1 / span 2;position:relative;aspect-ratio:2/3}
-.btq .compo > div{position:relative;aspect-ratio:1/1}
 .btq .atelier{max-width:var(--max);margin:0 auto;padding:clamp(88px,10vw,152px) var(--pad) clamp(72px,8vw,120px)}
 .btq .atelier .pic{position:relative;aspect-ratio:21/9;min-height:260px;background:var(--sand);overflow:hidden}
 .btq .atelier .cols2{display:flex;flex-wrap:wrap;gap:24px clamp(36px,6vw,104px);margin-top:clamp(32px,4vw,56px)}
@@ -376,3 +364,6 @@ html:has(.btq),body:has(.btq){margin:0;background:#F7F4EF}
 .btq .toast.show{opacity:1;transform:translateX(-50%)}
 
 @media (prefers-reduced-motion:reduce){.btq *{transition-duration:.01ms!important;transition-delay:0s!important;animation:none!important;scroll-behavior:auto!important}}
+/* viewer: the garment always fits the screen */
+@media (min-width:900px){.btq .pd .gal{position:sticky;top:0;height:100svh;align-self:flex-start}.btq .pd .main{aspect-ratio:auto;height:100%}}
+@media (max-width:899px){.btq .pd .main{aspect-ratio:auto;height:56svh}}

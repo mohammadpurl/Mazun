@@ -6,18 +6,18 @@ const en = {
   nCol: 'Collections', nRack: 'The Rack', nTry: 'Virtual Try-On', nSty: 'AI Stylist', nAt: 'Atelier',
   search: 'Search', wish: 'Wishlist', bag: 'Bag', menu: 'Menu', close: 'Close', language: 'Language',
   searchPh: 'Search abayas, satin, evening…', noResults: 'Nothing matches that yet.',
-  h1a: 'Discover Your', h1b: 'Signature Style', heroSub: 'A more personal way to experience fashion.',
-  heroCta1: 'Explore the Collection', heroCta2: 'Enter the Fitting Room',
+  
+  
   colK: 'Collections', colT: 'Ways into the atelier', discover: 'Discover', fabricCap: 'Duchess satin, hand-finished cuff',
-  rackK: 'The Rack', newArrivals: 'New Arrivals', rackT: 'Browse it as you would in the boutique.',
-  rackHintD: 'Hover to see the back. Drag to browse, or select a piece to explore it.', rackHintM: 'Tap a piece to turn it. Tap again to explore.',
+  rackT: 'Browse the rail.',
+  rackHintD: 'Hover a piece to see its back. Click to open it.', aiK: 'Try, fit, style', aiT: 'See it on you. Know your size. Finish the look.', a1T: 'Try it on', a1B: 'Upload a full-length photo, or a short video and we use one still from it, to preview the piece on you.', readingVideo: 'Reading your video…', badVideo: 'We could not read this video. Try MP4 or a photo.', a1C: 'Open the fitting room', a2T: 'Find your size', a2B: "Share your height and usual size and we'll suggest one that's in stock.", a2C: 'Find my size', a3T: 'Complete the set', a3B: 'Get a shayla, bag, jewellery and shoes chosen for the piece and the occasion.', a3C: 'Build a set', suggestSet: 'Complete the set', pieceOf: (a: number, n: number) => `${a} of ${n}`, rackHintM: 'Swipe the rail. Tap a piece to turn it, tap again to open.',
   fAll: 'All', fNew: 'New', explore: 'Explore this look', prev: 'Previous', next: 'Next', newTag: 'New', sale: 'Sale', emptyRack: 'No pieces here yet.',
-  trK: 'Virtual Fitting Room', trT: 'Try it on before it travels.',
-  trB: 'Upload one full-length photo and see a piece on you, with your proportions, the real fabric and its true colour. Compare looks side by side before you decide.',
-  trCta: 'Enter the Fitting Room',
-  stK: 'AI Stylist', stT: 'One piece. A complete look.',
-  stB: 'Start from any garment. Your stylist suggests the shayla, bag, shoes and jewellery, and explains why each one works. Then ask for variations.',
-  stCta: 'Style a look',
+  
+  
+  
+  
+  
+  
   atK: 'The Atelier', atT: 'Cut, fitted and finished in Muscat.',
   atB: 'Every signature piece is pattern-cut in our studio and can be adjusted to your measurements. Visit for a private fitting, or book a video consultation.',
   atCta: 'Book a fitting appointment', apptMsg: 'Hello, I would like to book a fitting appointment.',
@@ -41,7 +41,7 @@ const en = {
         : `At ${h} cm, the ${len} length falls as designed in flat shoes.`),
   toK: 'Virtual Fitting Room', toT: 'Your fitting room', upT: 'Begin with a full-length photo',
   tips: ['Stand facing the camera, head to toe in frame', 'Even daylight and a plain background', 'Close-fitting clothes show your proportions best'],
-  upload: 'Upload photo', change: 'Change photo', privacy: 'Your photo is used only for this preview and is never stored.', browse: 'Browse the rack',
+  upload: 'Upload photo or video', change: 'Change photo', privacy: 'Your photo or a frame of your video goes to our AI provider to make this preview. We do not save it.', browse: 'Browse the rack',
   garment: 'Garment', generate: 'Generate Try-On Preview', generating: 'Generating preview', compare: 'Compare Looks', changeG: 'Change Garment',
   stages: ['Reading your pose', 'Draping the fabric', 'Matching the light'], before: 'Your photo', after: 'Preview', aiTag: 'AI preview', simpleTag: 'Simple preview',
   slider: 'Slider', side: 'Side by side', preserved: 'Kept true to you', presList: ['Your appearance', 'Body proportions', 'Garment silhouette', 'Fabric texture & colour'],
@@ -82,18 +82,18 @@ const ar: Strings = {
   nCol: 'المجموعات', nRack: 'رفّ الأزياء', nTry: 'القياس الافتراضي', nSty: 'المنسّق الذكي', nAt: 'الأتيليه',
   search: 'بحث', wish: 'المفضلة', bag: 'الحقيبة', menu: 'القائمة', close: 'إغلاق', language: 'اللغة',
   searchPh: 'ابحثي عن عباءات، ساتان، سهرة…', noResults: 'لا توجد نتائج مطابقة بعد.',
-  h1a: 'اكتشفي', h1b: 'أسلوبكِ الخاص', heroSub: 'طريقة أكثر خصوصية لتجربة الأزياء.',
-  heroCta1: 'استكشفي المجموعة', heroCta2: 'ادخلي غرفة القياس',
+  
+  
   colK: 'المجموعات', colT: 'طرق إلى الأتيليه', discover: 'اكتشفي', fabricCap: 'ساتان دوتشيس، أكمام منتهية يدوياً',
-  rackK: 'رفّ الأزياء', newArrivals: 'وصل حديثاً', rackT: 'تصفّحيه كما لو كنتِ في البوتيك.',
-  rackHintD: 'مرّري المؤشر لرؤية الظهر. اسحبي لتصفّح القطع، أو اختاري قطعة لاستكشافها.', rackHintM: 'المسي القطعة لتدويرها، ثم المسيها مجدداً لاستكشافها.',
+  rackT: 'تصفّحي الرفّ.',
+  rackHintD: 'مرّري المؤشر على القطعة لرؤية ظهرها. انقري لفتحها.', aiK: 'جرّبي، قيسي، نسّقي', aiT: 'شاهديها عليكِ. اعرفي مقاسكِ. أكملي إطلالتكِ.', a1T: 'جرّبيها', a1B: 'حمّلي صورة بطول كامل، أو فيديو قصيراً نأخذ منه لقطة واحدة، لمعاينة القطعة عليكِ.', readingVideo: 'جارٍ قراءة الفيديو…', badVideo: 'تعذّرت قراءة هذا الفيديو. جرّبي MP4 أو صورة.', a1C: 'افتحي غرفة القياس', a2T: 'اعرفي مقاسكِ', a2B: 'أدخلي طولكِ ومقاسكِ المعتاد لتحصلي على توصية من المتوفر.', a2C: 'ما مقاسي؟', a3T: 'أكملي الطقم', a3B: 'شيلة وحقيبة ومجوهرات وحذاء مختارة للقطعة وللمناسبة.', a3C: 'كوّني طقماً', suggestSet: 'أكملي الطقم', pieceOf: (a: number, n: number) => `${a.toLocaleString('ar-OM')} من ${n.toLocaleString('ar-OM')}`, rackHintM: 'اسحبي الرفّ. المسي القطعة لتدويرها، ثم مجدداً لفتحها.',
   fAll: 'الكل', fNew: 'جديد', explore: 'استكشفي هذه الإطلالة', prev: 'السابق', next: 'التالي', newTag: 'جديد', sale: 'تخفيض', emptyRack: 'لا توجد قطع هنا بعد.',
-  trK: 'غرفة القياس الافتراضية', trT: 'جرّبيها قبل أن تصلكِ.',
-  trB: 'حمّلي صورة واحدة بطول كامل وشاهدي القطعة عليكِ، بنِسبكِ الحقيقية وبقماشها ولونها الفعلي. قارني الإطلالات جنباً إلى جنب قبل أن تقرري.',
-  trCta: 'ادخلي غرفة القياس',
-  stK: 'المنسّق الذكي', stT: 'قطعة واحدة. إطلالة كاملة.',
-  stB: 'ابدئي من أي قطعة. تقترح المنسّقة الشيلة والحقيبة والحذاء والمجوهرات، وتشرح سبب كل اختيار. ثم اطلبي التعديلات.',
-  stCta: 'نسّقي إطلالة',
+  
+  
+  
+  
+  
+  
   atK: 'الأتيليه', atT: 'تُقصّ وتُفصّل وتُنهى في مسقط.',
   atB: 'كل قطعة مميزة تُقصّ في مشغلنا ويمكن تعديلها وفق مقاساتكِ. زورينا لقياس خاص، أو احجزي استشارة بالفيديو.',
   atCta: 'احجزي موعد قياس', apptMsg: 'مرحباً، أرغب في حجز موعد قياس.',
@@ -117,7 +117,7 @@ const ar: Strings = {
         : `بطول ${h} سم، ينسدل الطول ${len === 'floor' ? 'إلى الأرض' : 'إلى الكاحل'} كما صُمّم مع حذاء مسطح.`),
   toK: 'غرفة القياس الافتراضية', toT: 'غرفة القياس الخاصة بكِ', upT: 'ابدئي بصورة بطول كامل',
   tips: ['قفي مواجهة للكاميرا، من الرأس إلى القدمين', 'إضاءة نهارية متساوية وخلفية بسيطة', 'الملابس الضيقة تُظهر نِسبكِ بدقة أكبر'],
-  upload: 'حمّلي صورة', change: 'غيّري الصورة', privacy: 'تُستخدم صورتكِ لهذه المعاينة فقط ولا تُحفظ أبداً.', browse: 'تصفّحي الرف',
+  upload: 'حمّلي صورة أو فيديو', change: 'غيّري الصورة', privacy: 'تُرسل صورتكِ أو لقطة من الفيديو إلى مزوّد الذكاء الاصطناعي لإنشاء المعاينة، ولا نحفظها.', browse: 'تصفّحي الرف',
   garment: 'القطعة', generate: 'أنشئي معاينة القياس', generating: 'جارٍ إنشاء المعاينة', compare: 'قارني الإطلالات', changeG: 'غيّري القطعة',
   stages: ['قراءة وضعيتكِ', 'إسدال القماش', 'مطابقة الإضاءة'], before: 'صورتكِ', after: 'المعاينة', aiTag: 'معاينة بالذكاء الاصطناعي', simpleTag: 'معاينة مبسطة',
   slider: 'المنزلق', side: 'جنباً إلى جنب', preserved: 'محافظة على ملامحكِ', presList: ['مظهركِ', 'نِسب الجسم', 'قَصّة القطعة', 'ملمس القماش ولونه'],
@@ -156,18 +156,18 @@ const fa: Strings = {
   nCol: 'مجموعه‌ها', nRack: 'رگال', nTry: 'پرو مجازی', nSty: 'استایلیست هوشمند', nAt: 'آتلیه',
   search: 'جستجو', wish: 'علاقه‌مندی‌ها', bag: 'سبد', menu: 'منو', close: 'بستن', language: 'زبان',
   searchPh: 'جستجوی عبا، ساتن، لباس شب…', noResults: 'هنوز چیزی با این جستجو پیدا نشد.',
-  h1a: 'سبک امضای', h1b: 'خودتان را بیابید', heroSub: 'راهی شخصی‌تر برای تجربهٔ مد.',
-  heroCta1: 'دیدن مجموعه', heroCta2: 'ورود به اتاق پرو',
+  
+  
   colK: 'مجموعه‌ها', colT: 'راه‌های ورود به آتلیه', discover: 'کشف کنید', fabricCap: 'ساتن دوشس، سرآستین دست‌دوز',
-  rackK: 'رگال', newArrivals: 'تازه‌ها', rackT: 'همان‌طور که در بوتیک می‌گردید، این‌جا هم بگردید.',
-  rackHintD: 'نشانگر را روی لباس ببرید تا پشتش را ببینید. برای مرور بکشید و برای دیدن جزئیات کلیک کنید.', rackHintM: 'روی لباس بزنید تا بچرخد؛ دوباره بزنید تا جزئیاتش را ببینید.',
+  rackT: 'رگال را بگردید.',
+  rackHintD: 'نشانگر را روی لباس ببرید تا پشتش را ببینید. برای باز کردن کلیک کنید.', aiK: 'پرو، سایز، ست', aiT: 'روی خودتان ببینید. سایزتان را بدانید. ستتان را کامل کنید.', a1T: 'پرو کنید', a1B: 'یک عکس تمام‌قد، یا ویدیوی کوتاهی که یک فریمش را برمی‌داریم، بارگذاری کنید و لباس را روی خودتان ببینید.', readingVideo: 'در حال خواندن ویدیو…', badVideo: 'این ویدیو خوانده نشد. MP4 یا عکس را امتحان کنید.', a1C: 'ورود به اتاق پرو', a2T: 'سایزتان را پیدا کنید', a2B: 'قد و سایز همیشگی‌تان را بگویید تا سایز موجود مناسب را پیشنهاد کنیم.', a2C: 'پیدا کردن سایز من', a3T: 'ست را کامل کنید', a3B: 'شال، کیف، جواهر و کفش متناسب با لباس و مناسبت را ببینید.', a3C: 'ساختن ست', suggestSet: 'کامل کردن ست', pieceOf: (a: number, n: number) => `${a.toLocaleString('fa-IR')} از ${n.toLocaleString('fa-IR')}`, rackHintM: 'رگال را بکشید. روی لباس بزنید تا بچرخد و دوباره بزنید تا باز شود.',
   fAll: 'همه', fNew: 'جدید', explore: 'دیدن این لباس', prev: 'قبلی', next: 'بعدی', newTag: 'جدید', sale: 'تخفیف', emptyRack: 'هنوز لباسی این‌جا نیست.',
-  trK: 'اتاق پرو مجازی', trT: 'پیش از آن‌که به دستتان برسد، بپوشیدش.',
-  trB: 'یک عکس تمام‌قد بارگذاری کنید و لباس را روی خودتان ببینید؛ با تناسب‌های خودتان، پارچه و رنگ واقعی. پیش از تصمیم، ظاهرها را کنار هم مقایسه کنید.',
-  trCta: 'ورود به اتاق پرو',
-  stK: 'استایلیست هوشمند', stT: 'یک لباس. یک ست کامل.',
-  stB: 'از هر لباسی شروع کنید. استایلیست شال، کیف، کفش و جواهر را پیشنهاد می‌دهد و می‌گوید چرا هرکدام مناسب است. بعد تغییرات دلخواهتان را بخواهید.',
-  stCta: 'ست کردن',
+  
+  
+  
+  
+  
+  
   atK: 'آتلیه', atT: 'برش، دوخت و پرداخت در مسقط.',
   atB: 'هر لباس امضادار در کارگاه ما الگوبرداری می‌شود و می‌تواند با اندازه‌های شما تنظیم شود. برای پرو خصوصی بیایید یا مشاورهٔ تصویری رزرو کنید.',
   atCta: 'رزرو وقت پرو', apptMsg: 'سلام، می‌خواهم برای پرو وقت بگیرم.',
@@ -191,7 +191,7 @@ const fa: Strings = {
         : `با قد ${h} سانتی‌متر، طول ${len === 'floor' ? '«تا زمین»' : '«تا مچ»'} با کفش تخت همان‌طور که طراحی شده می‌ایستد.`),
   toK: 'اتاق پرو مجازی', toT: 'اتاق پروی شما', upT: 'با یک عکس تمام‌قد شروع کنید',
   tips: ['رو به دوربین بایستید، از سر تا پا در کادر', 'نور یکنواخت روز و پس‌زمینهٔ ساده', 'لباس جذب، تناسب‌های شما را بهتر نشان می‌دهد'],
-  upload: 'بارگذاری عکس', change: 'تغییر عکس', privacy: 'عکس شما فقط برای همین پیش‌نمایش استفاده می‌شود و هرگز ذخیره نمی‌شود.', browse: 'دیدن رگال',
+  upload: 'بارگذاری عکس یا ویدیو', change: 'تغییر عکس', privacy: 'عکس یا فریمی از ویدیوی شما برای ساخت پیش‌نمایش به سرویس هوش مصنوعی فرستاده می‌شود و ما آن را نگه نمی‌داریم.', browse: 'دیدن رگال',
   garment: 'لباس', generate: 'ساخت پیش‌نمایش پرو', generating: 'در حال ساخت پیش‌نمایش', compare: 'مقایسهٔ ظاهرها', changeG: 'تغییر لباس',
   stages: ['خواندن حالت بدن', 'انداختن پارچه', 'هماهنگ‌کردن نور'], before: 'عکس شما', after: 'پیش‌نمایش', aiTag: 'پیش‌نمایش هوش مصنوعی', simpleTag: 'پیش‌نمایش ساده',
   slider: 'اسلایدر', side: 'کنار هم', preserved: 'آن‌چه دست‌نخورده می‌ماند', presList: ['چهرهٔ شما', 'تناسب بدن', 'فرم لباس', 'بافت و رنگ پارچه'],

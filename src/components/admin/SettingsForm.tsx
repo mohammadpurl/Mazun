@@ -103,11 +103,8 @@ export function SettingsForm({ initial, garments }: { initial: Settings; garment
           </select>
         </label>
         <div className="imgs" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
-          <ImageField label="عکس اصلی بالای صفحه (افقی، عریض)" value={s.home.hero} onChange={hero => setHome({ hero })} onBusy={onBusy} />
           <ImageField label="نمای نزدیک پارچه (مربع)" value={s.home.fabric} onChange={fabric => setHome({ fabric })} onBusy={onBusy} />
           <ImageField label="آتلیه (افقی، خیلی عریض)" value={s.home.atelier} onChange={atelier => setHome({ atelier })} onBusy={onBusy} />
-          <ImageField label="اتاق پرو: عکس نمونهٔ مشتری (۳ به ۴)" value={s.home.tryBefore} onChange={tryBefore => setHome({ tryBefore })} onBusy={onBusy} />
-          <ImageField label="اتاق پرو: همان مشتری با لباس (۳ به ۴)" value={s.home.tryAfter} onChange={tryAfter => setHome({ tryAfter })} onBusy={onBusy} />
         </div>
       </section>
 

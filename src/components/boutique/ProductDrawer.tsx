@@ -11,11 +11,13 @@ export function ProductDrawer() {
   const g = b.byId(b.productId);
   const close = useCallback(() => b.openProduct(null), [b]);
   return (
-    <Sheet open={!!g} onClose={close} label={g ? b.tx(g.name) : ''} width={1100}>
+    <Sheet open={!!g} onClose={close} label={g ? b.tx(g.name) : ''} width={4000}>
       {g && <Body key={g.id} id={g.id} onClose={close} />}
     </Sheet>
   );
 }
+
+let stepFocus: 'prev' | 'next' | null = null; // the viewer remounts per piece; keeps keyboard focus on the arrow
 
 function Body({ id, onClose }: { id: string; onClose: () => void }) {
   const b = useBoutique();
@@ -24,13 +26,36 @@ function Body({ id, onClose }: { id: string; onClose: () => void }) {
   const g = b.byId(id)!;
   const [img, setImg] = useState(0);
   const [color, setColor] = useState(0);
-  const [size, setSize] = useState<string | null>(null);
+  const [size, setSize] = useState<string | null>(b.initialSize);
   const [openD, setOpenD] = useState<number | null>(null);
   useEffect(() => { if (g.sizes.length === 1 && g.sizes[0].ok) setSize(g.sizes[0].n); }, [g]);
 
+  const order = (b.viewList?.includes(id) ? b.viewList.map(x => b.byId(x)).filter(x => !!x) : b.garments);
+  const pos = order.findIndex(x => x.id === id);
+  const stepTo = useCallback((d: number) => {
+    const n = order.length;
+    if (pos < 0 || n < 2) return;
+    stepFocus = d > 0 ? 'next' : 'prev';
+    document.querySelector('.sheet:has(.pd)')?.scrollTo({ top: 0 });
+    b.openProduct(order[(pos + d + n) % n].id, { list: b.viewList ?? undefined });
+  }, [b, order, pos]);
+  useEffect(() => {
+    if (stepFocus) (document.querySelector(`.pd-nav.${stepFocus}`) as HTMLElement | null)?.focus({ preventScroll: true });
+    stepFocus = null;
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (b.sizeReq || e.altKey || e.ctrlKey || e.metaKey || (e.target as HTMLElement).closest('input,textarea')) return;
+      stepTo((e.key === 'ArrowRight') === (b.dir === 'ltr') ? 1 : -1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [stepTo, b.dir, b.sizeReq]);
+
   const views = ['front', 'back', 'detail'] as const;
   const labels = [t.front, t.back, t.detail];
-  const shownViews = g.kind === 'garment' ? views : (['front', ...(g.back ? ['back'] : []), ...(g.detail ? ['detail'] : [])] as typeof views[number][]);
+  const shownViews = g.kind === 'garment' && (g.detail || !g.front) ? views : (['front', ...(g.back ? ['back'] : []), ...(g.detail ? ['detail'] : [])] as typeof views[number][]);
   const cat = b.categories.find(c => c.id === g.categoryId);
   const price = effectivePrice(g);
   const wished = b.wish.includes(g.id);
@@ -42,7 +67,7 @@ function Body({ id, onClose }: { id: string; onClose: () => void }) {
     b.addToBag(g.id, color, size);
     b.toast(`${t.added} — ${tx(g.name)}, ${size}`);
   }
-  const go = (href: string) => { onClose(); router.push(href); };
+  const go = (href: string) => { b.openProduct(null, { leaving: true }); router.push(href); };
 
   return (
     <div className="pd">
@@ -64,6 +89,13 @@ function Body({ id, onClose }: { id: string; onClose: () => void }) {
             </div>
           ))}
           <span className="tag">{labels[views.indexOf(shownViews[img])]}</span>
+          {pos >= 0 && order.length > 1 && (
+            <>
+              <button type="button" className="ibtn pd-nav prev" aria-label={t.prev} onClick={() => stepTo(-1)}><i className="ph-duotone ph-arrow-left flip-rtl" /></button>
+              <button type="button" className="ibtn pd-nav next" aria-label={t.next} onClick={() => stepTo(1)}><i className="ph-duotone ph-arrow-right flip-rtl" /></button>
+              <span className="pd-count">{t.pieceOf(pos + 1, order.length)}</span>
+            </>
+          )}
         </div>
       </div>
 

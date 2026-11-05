@@ -9,9 +9,9 @@ const order = (items: OrderInput['items'], lang: OrderInput['lang'] = 'en'): Ord
 const garments = (): Garment[] => structuredClone(SEED_GARMENTS);
 
 test('buildOrder prices every line on the server and totals the bag', () => {
-  const r = buildOrder(order([{ garmentId: 'zayna', size: 'M', color: 1, qty: 2 }, { garmentId: 'bag-clutch', size: 'ONE', color: 0, qty: 1 }]), garments(), SEED_CATEGORIES);
+  const r = buildOrder(order([{ garmentId: 'zayna', size: 'M', color: 0, qty: 2 }, { garmentId: 'bag-clutch', size: 'ONE', color: 0, qty: 1 }]), garments(), SEED_CATEGORIES);
   assert.ok(r.ok);
-  assert.deepEqual(r.order.items[0], { garmentId: 'zayna', name: 'Zayna', size: 'M', color: 'Espresso', qty: 2, price: 168 });
+  assert.deepEqual(r.order.items[0], { garmentId: 'zayna', name: 'Zayna', size: 'M', color: 'Olive', qty: 2, price: 168 });
   assert.equal(r.order.total, 168 * 2 + 98);
   assert.equal(r.order.customerName, 'Sara');
   assert.ok(!('items' in r.order && (r.order as unknown as { garmentId?: string }).garmentId));

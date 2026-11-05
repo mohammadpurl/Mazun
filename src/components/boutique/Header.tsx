@@ -8,21 +8,14 @@ import { Art } from './Art';
 import { useBoutique } from './Boutique';
 import { LANG_LABEL } from './i18n';
 
-/** Header: transparent over the home hero, solid once scrolled; collapses to menu + brand + bag below 1200px. */
+/** Header: solid over the light home page; collapses to menu + brand + bag below 1200px. */
 export function Header() {
   const b = useBoutique();
   const { t, tx, settings } = b;
   const path = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
 
-  useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 40);
-    on();
-    window.addEventListener('scroll', on, { passive: true });
-    return () => window.removeEventListener('scroll', on);
-  }, []);
   useEffect(() => { setMenu(false); setSearch(false); }, [path]);
   useEffect(() => {
     if (!menu) return;
@@ -33,7 +26,6 @@ export function Header() {
     return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
   }, [menu]);
 
-  const clear = path === '/' && !scrolled && !search;
   const nav = [
     { href: '/#collections', label: t.nCol },
     { href: '/#rack', label: t.nRack },
@@ -55,7 +47,7 @@ export function Header() {
 
   return (
     <>
-      <header className={`hdr${clear ? ' clear' : ''}`}>
+      <header className="hdr">
         <div className="hdr-in">
           <div className="compact">
             <button type="button" className="ibtn" aria-label={t.menu} aria-expanded={menu} onClick={() => setMenu(true)} style={{ marginInlineStart: -10 }}>

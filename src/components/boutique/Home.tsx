@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { effectivePrice } from '@/lib/fit';
 import { shopChatLink } from '@/lib/order-message';
 import type { Category } from '@/lib/types';
 import { Art, Pic } from './Art';
@@ -15,7 +14,7 @@ const scrollToId = (id: string) => {
 
 export function Home() {
   const b = useBoutique();
-  const { t, tx, settings } = b;
+  const { t, settings } = b;
   const [filter, setFilter] = useState<RackFilter>('all');
 
   // "?c=<collection>" from search suggestions and shared links preselects the rack filter.
@@ -26,75 +25,49 @@ export function Home() {
 
   const showCollection = (c: Category) => { setFilter(c.id); scrollToId('rack'); };
   const featured = b.byId(settings.home.featuredId) ?? b.garments[0];
-  const accessories = b.products.filter(p => p.kind === 'bag' || p.kind === 'shoes').slice(0, 2);
+  const second = b.garments.find(g => g !== featured) ?? featured, third = b.garments.find(g => g !== featured && g !== second) ?? featured;
+  const accessories = (['bag', 'shoes'] as const).flatMap(k => b.products.find(p => p.kind === k && p.front) ?? []);
   const appt = shopChatLink(settings, t.apptMsg);
-  const arrow = <i className="ph-duotone ph-arrow-right flip-rtl" />;
 
   return (
     <main>
-      <section className="hero">
-        <div style={{ position: 'absolute', inset: 0 }}><Pic src={settings.home.hero} dark /></div>
-        <div className="scrim" />
-        <div className="copy">
-          <div style={{ maxWidth: 820, display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <h1><span>{t.h1a}</span><em>{t.h1b}</em></h1>
-            <p>{t.heroSub}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 10 }}>
-              <button type="button" className="btn light" onClick={() => scrollToId('collections')}>{t.heroCta1}</button>
-              <Link href="/fitting-room" className="btn on-dark">{t.heroCta2}</Link>
+      <Rack filter={filter} setFilter={setFilter} />
+
+      <section id="ai" className="ai">
+        <div className="ai-head">
+          <span className="kicker">{t.aiK}</span>
+          <h2 className="h2">{t.aiT}</h2>
+        </div>
+        <div className="ai-grid">
+          <article className="ai-card">
+            <div className="pic">{featured && <span className="in"><Art g={featured} /></span>}</div>
+            <h3 className="h3">{t.a1T}</h3>
+            <p>{t.a1B}</p>
+            <p className="note">{t.privacy}</p>
+            <Link href={featured ? `/fitting-room?g=${encodeURIComponent(featured.id)}` : '/fitting-room'} className="btn">{t.a1C}</Link>
+          </article>
+          <article className="ai-card">
+            <div className="pic">{second && <span className="in"><Art g={second} view="back" /></span>}</div>
+            <h3 className="h3">{t.a2T}</h3>
+            <p>{t.a2B}</p>
+            {second && <button type="button" className="btn ghost" onClick={() => b.openSize({ garmentId: second.id, onUse: size => b.openProduct(second.id, { size }) })}>{t.a2C}</button>}
+          </article>
+          <article className="ai-card">
+            <div className="pic set">
+              {third && <span className="in"><Art g={third} /></span>}
+              {accessories.map(a => <span key={a.id} className="acc-tile"><Art g={a} /></span>)}
             </div>
-          </div>
-          {featured && (
-            <button type="button" className="cap" onClick={() => b.openProduct(featured.id)}>
-              {tx(featured.name)}, {tx(featured.type)} · {b.price(effectivePrice(featured))}{arrow}
-            </button>
-          )}
+            <h3 className="h3">{t.a3T}</h3>
+            <p>{t.a3B}</p>
+            <Link href={third ? `/stylist?g=${encodeURIComponent(third.id)}` : '/stylist'} className="btn ghost">{t.a3C}</Link>
+          </article>
         </div>
       </section>
 
       <Collections onShow={showCollection} />
 
-      <Rack filter={filter} setFilter={setFilter} />
-
-      <section className="teaser">
-        <div className="pair" dir="ltr">
-          <div>
-            <div className="pic"><Pic src={settings.home.tryBefore} /></div>
-            <span className="label" dir={b.dir}>{t.before}</span>
-          </div>
-          <div>
-            <div className="pic"><Pic src={settings.home.tryAfter} /></div>
-            <span className="label" dir={b.dir}>{t.after}</span>
-          </div>
-        </div>
-        <div className="text">
-          <span className="kicker">{t.trK}</span>
-          <h2 className="h2s">{t.trT}</h2>
-          <p className="lead">{t.trB}</p>
-          <div style={{ marginTop: 8 }}><Link href="/fitting-room" className="btn">{t.trCta}</Link></div>
-          <p className="note">{t.privacy}</p>
-        </div>
-      </section>
-
-      <section className="teaser rev">
-        <div className="text">
-          <span className="kicker">{t.stK}</span>
-          <h2 className="h2s">{t.stT}</h2>
-          <p className="lead">{t.stB}</p>
-          <div style={{ marginTop: 8 }}>
-            <Link href={featured ? `/stylist?g=${encodeURIComponent(featured.id)}` : '/stylist'} className="btn ghost">{t.stCta}{arrow}</Link>
-          </div>
-        </div>
-        {featured && (
-          <div className="compo" aria-hidden="true">
-            <div><Art g={featured} /></div>
-            {accessories.map(a => <div key={a.id}><Art g={a} /></div>)}
-          </div>
-        )}
-      </section>
-
       <section id="atelier" className="atelier">
-        <div className="pic"><Pic src={settings.home.atelier} /></div>
+        {settings.home.atelier && <div className="pic"><Pic src={settings.home.atelier} /></div>}
         <div className="cols2">
           <div>
             <span className="kicker">{t.atK}</span>
@@ -115,11 +88,14 @@ function Collections({ onShow }: { onShow: (c: Category) => void }) {
   const b = useBoutique();
   const { t, tx, settings } = b;
   const cats = b.categories.slice(0, 4);
+  const cover = (c: Category) => b.garments.find(g => g.categoryId === c.id);
   if (!cats.length) return <div id="collections" />;
   const arrow = <i className="ph-duotone ph-arrow-right flip-rtl" />;
   const tile = (c: Category, i: number, ratio: string, flex: string, extra?: React.CSSProperties, compact = false) => (
     <div className="tile" style={{ flex, ...extra }}>
-      <div className="pic" style={{ aspectRatio: ratio }}><Pic src={c.image} alt={tx(c.name)} /></div>
+      <div className="pic" style={{ aspectRatio: ratio }}>
+        {c.image ? <Pic src={c.image} alt={tx(c.name)} /> : cover(c) && <span className="tile-art"><Art g={cover(c)!} /></span>}
+      </div>
       <div className="meta">
         <span className="num">{String(i + 1).padStart(2, '0')}</span>
         <div>
@@ -143,10 +119,12 @@ function Collections({ onShow }: { onShow: (c: Category) => void }) {
         {cats[1] && (
           <div className="tile" style={{ flex: '5 1 340px', marginTop: 'clamp(0px, calc(12vw - 60px), 168px)' }}>
             {tile(cats[1], 1, '3/4', '1 1 auto')}
-            <figure className="fabric">
-              <div className="pic"><Pic src={settings.home.fabric} alt={t.fabricCap} /></div>
-              <figcaption>{t.fabricCap}</figcaption>
-            </figure>
+            {settings.home.fabric && (
+              <figure className="fabric">
+                <div className="pic"><Pic src={settings.home.fabric} alt={t.fabricCap} /></div>
+                <figcaption>{t.fabricCap}</figcaption>
+              </figure>
+            )}
           </div>
         )}
       </div>

@@ -26,6 +26,45 @@ function toDataUrl(file: File, max = 1024): Promise<string> {
   });
 }
 
+/** A video gives one still, taken a moment in so the customer has settled. Stays in the browser like a photo. */
+function videoFrame(file: File, max = 1024): Promise<string> {
+  return new Promise((res, rej) => {
+    const v = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    let done = false;
+    const finish = (fn: () => void) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      fn();
+      URL.revokeObjectURL(url);
+      v.removeAttribute('src');
+      v.load();
+    };
+    const fail = () => finish(() => rej(new Error('video')));
+    const timer = setTimeout(fail, 10000);
+    const grab = () => finish(() => {
+      try {
+        if (!v.videoWidth || !v.videoHeight) throw new Error('video');
+        const s = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * s); c.height = Math.round(v.videoHeight * s);
+        c.getContext('2d')!.drawImage(v, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.88));
+      } catch (err) { rej(err); }
+    });
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.onerror = fail;
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    v.onloadeddata = async () => {
+      await v.play().catch(() => {}); // iOS decodes no frame until played
+      v.pause();
+      const at = Math.min(1, (Number.isFinite(v.duration) ? v.duration : 0) / 2);
+      if (at > 0) { v.onseeked = grab; v.currentTime = at; } else grab();
+    };
+    v.src = url;
+  });
+}
+
 /** Without the AI: the garment photo (or its coloured silhouette) laid over the customer's photo. */
 async function overlay(person: string, g: Garment, color: number): Promise<string> {
   const load = (u: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = u; });
@@ -89,8 +128,10 @@ export function FittingRoom() {
 
   async function choose(file: File | undefined) {
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { b.toast(t.badFile); return; }
-    try { setPhoto(await toDataUrl(file)); setResult(''); setState('ready'); } catch { b.toast(t.badFile); }
+    const video = /^video\/(mp4|webm|quicktime)$/.test(file.type) || (!file.type && /\.(mp4|webm|mov)$/i.test(file.name));
+    if (!video && !/^image\/(jpeg|png|webp)$/.test(file.type)) { b.toast(t.badFile); return; }
+    if (video) b.toast(t.readingVideo);
+    try { setPhoto(await (video ? videoFrame(file) : toDataUrl(file))); setResult(''); setState('ready'); } catch { b.toast(video ? t.badVideo : t.badFile); }
   }
 
   async function generate() {
@@ -132,7 +173,7 @@ export function FittingRoom() {
 
   return (
     <main className="studio">
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => { choose(e.target.files?.[0]); e.target.value = ''; }} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" hidden onChange={e => { choose(e.target.files?.[0]); e.target.value = ''; }} />
       <div className="stage-col">
         <div className="portrait" dir="ltr">
           {state === 'empty' && (
@@ -280,6 +321,7 @@ export function FittingRoom() {
                   <i className="ph-duotone ph-columns" />{mode === 'slider' ? t.side : t.slider}
                 </button>
                 <button type="button" className="btn ghost sm" onClick={() => setPicker(true)}><i className="ph-duotone ph-coat-hanger" />{t.another}</button>
+                <Link href={`/stylist?g=${encodeURIComponent(g.id)}`} className="btn ghost sm"><i className="ph-duotone ph-sparkle" />{t.suggestSet}</Link>
               </>
             ) : (
               <>

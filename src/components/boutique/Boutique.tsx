@@ -39,7 +39,10 @@ interface Ctx {
   sheet: Sheet;
   openSheet: (s: Sheet) => void;
   productId: string | null;
-  openProduct: (id: string | null) => void;
+  /** `list` is what the viewer steps through (the filtered rack); `size` preselects a recommended size. */
+  openProduct: (id: string | null, opts?: { list?: string[]; size?: string; leaving?: boolean }) => void;
+  viewList: string[] | null;
+  initialSize: string | null;
   sizeReq: SizeRequest | null;
   openSize: (req: SizeRequest | null) => void;
   toast: (msg: string) => void;
@@ -69,6 +72,9 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
   const [wish, setWish] = useState<string[]>([]);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [productId, setProductId] = useState<string | null>(null);
+  const [viewList, setViewList] = useState<string[] | null>(null);
+  const [initialSize, setInitialSize] = useState<string | null>(null);
+  const pushed = useRef(false);
   const [sizeReq, setSizeReq] = useState<SizeRequest | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -107,14 +113,25 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     toastTimer.current = setTimeout(() => setToastMsg(''), 2600);
   }, []);
 
-  // Keep ?p=<id> in the address bar so a product can be shared; no navigation, no scroll jump.
-  const openProduct = useCallback((id: string | null) => {
+  // Keep ?p=<id> in the address bar so a product can be shared; the first open adds a history entry so the
+  // phone's Back closes the viewer and returns to the rack. Stepping between pieces replaces it.
+  const openProduct = useCallback((id: string | null, opts?: { list?: string[]; size?: string; leaving?: boolean }) => {
+    setInitialSize(opts?.size ?? null);
+    setViewList(opts?.list ?? null);
     setProductId(id);
     try {
+      if (!id && opts?.leaving) { pushed.current = false; return; } // a page change follows; going back here would cancel it
+      if (!id && pushed.current) { pushed.current = false; history.back(); return; }
       const u = new URL(location.href);
       if (id) u.searchParams.set('p', id); else u.searchParams.delete('p');
-      history.replaceState(history.state, '', u);
+      if (id && !pushed.current && !new URLSearchParams(location.search).get('p')) { pushed.current = true; history.pushState(history.state, '', u); }
+      else history.replaceState(history.state, '', u);
     } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    const on = () => { pushed.current = false; setProductId(new URLSearchParams(location.search).get('p')); };
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
   }, []);
 
   const value: Ctx = {
@@ -135,7 +152,7 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     bagCount: bag.reduce((a, l) => a + l.q, 0),
     wish,
     toggleWish: id => setWish(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id])),
-    sheet, openSheet: setSheet, productId, openProduct, sizeReq, openSize: setSizeReq,
+    sheet, openSheet: setSheet, productId, openProduct, viewList, initialSize, sizeReq, openSize: setSizeReq,
     toast, toastMsg,
   };
   return <BoutiqueCtx.Provider value={value}>{children}</BoutiqueCtx.Provider>;
