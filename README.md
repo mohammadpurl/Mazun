@@ -11,7 +11,7 @@ olive; Source Serif 4 / Noto Naskh Arabic; 2px radius).
 | Where | What it does |
 |---|---|
 | `/` | Hero, four collection tiles, the rack, fitting-room and stylist teasers, atelier section |
-| The rack | Garments on a rail; hover shows the back, neighbours lean away; on touch the first tap turns a piece and the second opens it; filters by collection and "New" |
+| The rack | Garments on a rail; hover or keyboard focus turns a piece to its back, neighbours lean away; drag with a mouse or swipe to browse; on touch the first tap turns a piece and the second opens it; filters by collection and "New" |
 | Product drawer (`?p=<id>`) | Front / back / detail, colours, sizes, stock line, add to bag, wishlist, try-on and stylist buttons, fabric and delivery |
 | Size assistant | Height, usual size, fit, length, optional measurements → a recommended size in stock with the size guide (`recommendSize` in `src/lib/fit.ts`) |
 | `/fitting-room` | Upload a full-length photo → preview of the garment on the customer (Gemini), slider or side-by-side comparison; without a key, a simple overlay |

@@ -15,6 +15,8 @@
     "@anthropic-ai/sdk": "0.131.0",
     "@phosphor-icons/web": "2.1.2",
     "@supabase/supabase-js": "2.117.2",
+    "gsap": "3.13.0",
+    "motion": "12.23.0",
     "next": "15.5.27",
     "react": "19.2.8",
     "react-dom": "19.2.8"
