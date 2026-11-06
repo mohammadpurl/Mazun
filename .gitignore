@@ -15,3 +15,11 @@ public/uploads/
 
 # Supabase CLI state
 supabase/.temp/
+
+# design handoff archive and local design-tool state
+mazun-atelier-design-handoff.zip
+.taste-skill/
+mazun-atelier-design-handoff/
+
+# Copied from @mediapipe/tasks-vision by `npm install` (scripts/copy-mediapipe.mjs)
+public/mediapipe/wasm/

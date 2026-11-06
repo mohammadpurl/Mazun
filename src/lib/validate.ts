@@ -24,12 +24,24 @@ export function normalizePhone(v: unknown): string {
 
 export const MAX_ORDER_LINES = 20;
 
+/** A real calendar day written yyyy-mm-dd and nothing more (2026-02-30 is not), from yesterday on: a day of slack for
+ *  customers west of UTC, whose today can already be yesterday in UTC. Up to five years ahead catches typed-in typos. */
+function isEventDay(s: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  if (new Date(t).toISOString().slice(0, 10) !== s) return false;
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return t >= today - 86400000 && t <= today + 5 * 366 * 86400000;
+}
+
 export function validateOrder(raw: unknown): Result<OrderInput> {
   const o = obj(raw);
   const errors: Record<string, string> = {};
   const customerName = str(o.customerName, 80);
   const phone = normalizePhone(o.phone);
-  const eventDate = str(o.eventDate, 10);
+  const eventDate = str(o.eventDate, 40);
   const lines: OrderLineInput[] = [];
   for (const it of Array.isArray(o.items) ? o.items.slice(0, MAX_ORDER_LINES + 1) : []) {
     const r = obj(it);
@@ -42,7 +54,7 @@ export function validateOrder(raw: unknown): Result<OrderInput> {
   if (lines.length > MAX_ORDER_LINES) errors.items = 'too many';
   if (customerName.length < 2) errors.customerName = 'required';
   if (phone.length < 7 || phone.length > 15) errors.phone = 'invalid';
-  if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) errors.eventDate = 'invalid';
+  if (eventDate && !isEventDay(eventDate)) errors.eventDate = 'invalid';
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
@@ -109,6 +121,7 @@ export function validateGarment(raw: unknown): Result<GarmentInput> {
       kind, name, type: l10n(o.type, 120), description: l10n(o.description, 800), fabric: l10n(o.fabric, 300), note: l10n(o.note, 300),
       price, salePrice: sale, categoryId: categoryId || null, colors, sizes, chart: chartOf(o.chart, sizes),
       shape: pick(o.shape, SHAPES, 'abaya'), front, back: imageUrl(o.back), detail: imageUrl(o.detail),
+      wornFront: kind === 'garment' ? imageUrl(o.wornFront) : '', wornBack: kind === 'garment' ? imageUrl(o.wornBack) : '',
       leadDays: nonNegInt(o.leadDays), isNew: o.isNew === true, visible: o.visible !== false,
     },
   };

@@ -2,10 +2,12 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { OPEN_STATUSES, STATUS_LABEL } from '@/lib/labels';
-import { customerWhatsAppLink } from '@/lib/order-message';
+import { customerGreeting, customerWhatsAppLink } from '@/lib/order-message';
 import { itemsSummary } from '@/lib/orders';
 import { ORDER_STATUSES, type Order, type OrderStatus } from '@/lib/types';
 import { api, faDate, faId, faNum } from './api';
+import { Icon } from '@/components/shop/Icon';
+import { ONE_SIZE } from '@/lib/defaults';
 
 type Filter = 'all' | 'open' | OrderStatus;
 
@@ -87,15 +89,15 @@ export function OrdersTable({ initial, currency, initialStatus }: { initial: Ord
 function OrderDrawer({ o, currency, onClose, onPatch }: { o: Order; currency: string; onClose: () => void; onPatch: (b: Partial<Order>) => Promise<boolean> }) {
   const [note, setNote] = useState(o.adminNote);
   const [saved, setSaved] = useState('');
-  const greeting = `سلام ${o.customerName}، دربارهٔ سفارش شمارهٔ ${o.id} (${itemsSummary(o.items)}) با شما تماس می‌گیریم.`;
+  const greeting = customerGreeting(o);
   return (
     <>
       <div className="scrim" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-modal="true" aria-label={`سفارش ${o.id}`}>
-        <div className="row"><h2 style={{ margin: 0 }}>سفارش #{faId(o.id)}</h2><span className="spacer" /><button type="button" className="icon-btn" onClick={onClose} aria-label="بستن">✕</button></div>
+        <div className="row"><h2 style={{ margin: 0 }}>سفارش #{faId(o.id)}</h2><span className="spacer" /><button type="button" className="icon-btn" onClick={onClose} aria-label="بستن"><Icon name="close" /></button></div>
         <span className={`st st-${o.status}`} style={{ alignSelf: 'flex-start' }}>{STATUS_LABEL[o.status]}</span>
         <dl>
-          <dt>اقلام</dt><dd><ul style={{ margin: 0, paddingInlineStart: 18 }}>{o.items.map((i, k) => <li key={k}>{i.name}{i.color ? ` (${i.color})` : ''} · سایز <span dir="ltr">{i.size}</span> · {faNum(i.qty)} عدد · {faNum(i.price * i.qty)} {currency}</li>)}</ul></dd>
+          <dt>اقلام</dt><dd><ul style={{ margin: 0, paddingInlineStart: 18 }}>{o.items.map((i, k) => <li key={k}>{i.name}{i.color ? ` (${i.color})` : ''}{i.size === ONE_SIZE ? ' · تک‌سایز' : <> · سایز <span dir="ltr">{i.size}</span></>} · {faNum(i.qty)} عدد · {faNum(i.price * i.qty)} {currency}</li>)}</ul></dd>
           <dt>جمع</dt><dd>{faNum(o.total)} {currency}</dd>
           <dt>مشتری</dt><dd>{o.customerName}</dd>
           <dt>تلفن</dt><dd dir="ltr" style={{ textAlign: 'end' }}>+{o.phone}</dd>
@@ -118,8 +120,8 @@ function OrderDrawer({ o, currency, onClose, onPatch }: { o: Order; currency: st
         </label>
         <label className="f">یادداشت مدیر (فقط شما می‌بینید)<textarea value={note} maxLength={1000} onChange={e => { setNote(e.target.value); setSaved(''); }} /></label>
         <div className="row">
-          <button type="button" className="btn" disabled={note === o.adminNote} onClick={async () => { if (await onPatch({ adminNote: note })) setSaved('ذخیره شد ✓'); }}>ذخیرهٔ یادداشت</button>
-          <span className="msg ok">{saved}</span>
+          <button type="button" className="btn" disabled={note === o.adminNote} onClick={async () => { if (await onPatch({ adminNote: note })) setSaved('ذخیره شد'); }}>ذخیرهٔ یادداشت</button>
+          <span className="msg ok"><Icon name="check" /> {saved}</span>
         </div>
       </aside>
     </>

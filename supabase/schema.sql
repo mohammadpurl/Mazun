@@ -35,6 +35,8 @@ create table if not exists public.garments (
   front       text  not null default '',
   back        text  not null default '',
   detail      text  not null default '',
+  worn_front  text  not null default '',               -- the piece worn by a model (cards, product page)
+  worn_back   text  not null default '',
   chart       jsonb,                                       -- {"S":{"bust":86,...}}
   lead_days   int   not null default 0 check (lead_days >= 0),
   is_new      boolean not null default false,
@@ -42,6 +44,10 @@ create table if not exists public.garments (
   visible     boolean not null default true,
   created_at  timestamptz not null default now()
 );
+-- Upgrades a table created before the worn photos existed.
+alter table public.garments add column if not exists worn_front text not null default '';
+alter table public.garments add column if not exists worn_back  text not null default '';
+
 create index if not exists garments_kind_idx on public.garments (kind);
 
 create table if not exists public.orders (

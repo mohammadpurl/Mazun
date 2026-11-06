@@ -59,6 +59,7 @@ const CO: Record<string, Colour> = {
   taupe: { name: l('Taupe', 'بني رمادي', 'طوسی‌قهوه‌ای'), hex: '#8C7A68' },
   gold: { name: l('Gold', 'ذهبي', 'طلایی'), hex: '#C2A15B' },
   pearl: { name: l('Pearl', 'لؤلؤي', 'مرواریدی'), hex: '#EDE8DF' },
+  silver: { name: l('Silver', 'فضي', 'نقره‌ای'), hex: '#C9CCD1' },
 };
 
 export const SEED_CATEGORIES: Category[] = [
@@ -146,12 +147,19 @@ const SPECS: SeedSpec[] = [
     note: l('A low, steady heel that clears the hem without competing with it.', 'كعب منخفض وثابت يتجاوز الحاشية دون أن ينافسها.', 'پاشنهٔ کوتاه و محکمی که از زیر لبهٔ لباس بیرون می‌آید و با آن رقابت نمی‌کند.') },
   { id: 'pump-satin', kind: 'shoes', price: 112, name: l('Satin pointed pump', 'حذاء ساتان مدبب', 'کفش ساتن نوک‌تیز'), type: l('Shoes', 'حذاء', 'کفش'), colors: [CO.champagne], sizes: sizes(['36', '37', '38', '39', '40', '41']),
     note: l('A pointed toe shows past the hem and lengthens the line.', 'مقدمة مدببة تظهر من تحت الحاشية وتُطيل الخط.', 'نوک تیز کفش از زیر لبهٔ لباس پیدا می‌شود و قامت را کشیده‌تر نشان می‌دهد.') },
+  // Omani silver, after the jewellery women here have worn for generations.
+  { id: 'hirz-silver', kind: 'jewel', price: 120, name: l('Omani silver hirz necklace', 'قلادة حرز فضية عُمانية', 'گردنبند حرز نقرهٔ عمانی'), type: l('Jewellery', 'مجوهرات', 'جواهر'), colors: [CO.silver], sizes: sizes(['ONE']),
+    note: l('A hand-engraved silver amulet case with little bells, the hirz Omani women have worn for generations.', 'علبة حرز فضية منقوشة يدوياً بأجراس صغيرة، كما ترتديها المرأة العُمانية منذ أجيال.', 'جعبهٔ حرز نقره‌ای قلم‌زنی‌شده با زنگوله‌های کوچک؛ همان حرزی که زنان عمانی نسل‌ها پوشیده‌اند.') },
+  { id: 'bangles-silver', kind: 'jewel', price: 85, name: l('Engraved silver bangles, set of three', 'أساور فضية منقوشة، طقم من ثلاث', 'النگوهای نقرهٔ منقوش، ست سه‌تایی'), type: l('Jewellery', 'مجوهرات', 'جواهر'), colors: [CO.silver], sizes: sizes(['ONE']),
+    note: l('Three stacked bangles with diamond and flower engraving, in the manner of traditional Omani silverwork.', 'ثلاث أساور متراصّة بنقوش المعيّنات والزهور على طراز الفضيات العُمانية التقليدية.', 'سه النگوی روی هم با نقش لوزی و گل، به سبک نقره‌کاری سنتی عمان.') },
 ];
 
 /** Seeded garments with a front and back cut-out in public/images/garments/<id>-front.webp and -back.webp. */
 export const SEED_PHOTOS = new Set(['noor', 'reem', 'dana', 'salma', 'hessa', 'zayna', 'layal', 'mazun']);
+/** Seeded accessories with a cut-out in public/images/accessories/<id>.webp. */
+export const SEED_ACCESSORY_PHOTOS = new Set(['shayla-silk', 'shayla-jersey', 'bag-top', 'bag-clutch', 'hoops-gold', 'pearl-drops', 'mule-block', 'pump-satin', 'hirz-silver', 'bangles-silver']);
 
-/** The design's catalogue, used to seed an empty store. Accessories have no photos yet and draw a soft tile. */
+/** The design's catalogue, used to seed an empty store. */
 export const SEED_GARMENTS: Garment[] = SPECS.map((s, i) => ({
   id: s.id,
   kind: s.kind ?? 'garment',
@@ -166,9 +174,11 @@ export const SEED_GARMENTS: Garment[] = SPECS.map((s, i) => ({
   colors: s.colors,
   sizes: s.sizes,
   shape: s.shape ?? 'abaya',
-  front: SEED_PHOTOS.has(s.id) ? `/images/garments/${s.id}-front.webp` : '',
+  front: SEED_PHOTOS.has(s.id) ? `/images/garments/${s.id}-front.webp` : SEED_ACCESSORY_PHOTOS.has(s.id) ? `/images/accessories/${s.id}.webp` : '',
   back: SEED_PHOTOS.has(s.id) ? `/images/garments/${s.id}-back.webp` : '',
   detail: '',
+  wornFront: SEED_PHOTOS.has(s.id) ? `/images/worn/${s.id}-front.webp` : '',
+  wornBack: SEED_PHOTOS.has(s.id) ? `/images/worn/${s.id}-back.webp` : '',
   chart: null,
   leadDays: 0,
   isNew: !!s.isNew,

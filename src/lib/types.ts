@@ -60,6 +60,9 @@ export interface Garment {
   front: string;
   back: string;
   detail: string;
+  /** The piece worn by a model, front and back; cards and the product page prefer these, the rack keeps the cut-outs. */
+  wornFront: string;
+  wornBack: string;
   chart: SizeChart | null;
   /** Extra preparation days for this product, on top of the shop-wide prepDays. */
   leadDays: number;

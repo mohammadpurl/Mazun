@@ -26,6 +26,7 @@ const toGarment = (r: Row): Garment => ({
   colors: Array.isArray(r.colors) ? (r.colors as Garment['colors']) : [],
   sizes: Array.isArray(r.sizes) ? (r.sizes as Garment['sizes']) : [],
   shape: (r.shape as Garment['shape']) ?? 'abaya', front: String(r.front ?? ''), back: String(r.back ?? ''), detail: String(r.detail ?? ''),
+  wornFront: String(r.worn_front ?? ''), wornBack: String(r.worn_back ?? ''),
   chart: (r.chart as Garment['chart']) ?? null, leadDays: Number(r.lead_days ?? 0), isNew: r.is_new === true,
   sort: Number(r.sort ?? 0), visible: r.visible !== false, createdAt: String(r.created_at ?? ''),
 });
@@ -92,12 +93,26 @@ export class SupabaseRepo implements Repo {
 
   listGarments() { return this.rows(this.sb.from('garments').select('*').order('sort').order('id'), toGarment); }
   getGarment(id: string) { return this.one(this.sb.from('garments').select('*').eq('id', id).maybeSingle(), toGarment); }
+  /** The worn-photo columns came later (supabase/schema.sql); a database without them still saves everything else. */
+  private wornCols?: Promise<boolean>;
+  private async withWorn(g: GarmentInput) {
+    // Only "no such column" is remembered; a network blip is asked again next time rather than dropping photos.
+    this.wornCols ??= Promise.resolve(this.sb.from('garments').select('worn_front').limit(1)).then(r => {
+      if (!r.error) return true;
+      if (r.error.code === '42703' || r.error.code === 'PGRST204') return false;
+      this.wornCols = undefined;
+      return true;
+    });
+    if (await this.wornCols) return { ...fromGarment(g), worn_front: g.wornFront ?? '', worn_back: g.wornBack ?? '' };
+    if (g.wornFront || g.wornBack) throw new Error('worn_front/worn_back columns are missing — run supabase/schema.sql');
+    return fromGarment(g);
+  }
   async createGarment(input: GarmentInput) {
     const sort = input.sort ?? await this.nextSort('garments');
-    return (await this.one(this.sb.from('garments').insert({ ...fromGarment(input), sort }).select().single(), toGarment))!;
+    return (await this.one(this.sb.from('garments').insert({ ...(await this.withWorn(input)), sort }).select().single(), toGarment))!;
   }
-  updateGarment(id: string, input: GarmentInput) {
-    return this.one(this.sb.from('garments').update(fromGarment(input)).eq('id', id).select().maybeSingle(), toGarment);
+  async updateGarment(id: string, input: GarmentInput) {
+    return this.one(this.sb.from('garments').update(await this.withWorn(input)).eq('id', id).select().maybeSingle(), toGarment);
   }
   deleteGarment(id: string) { return this.check(this.sb.from('garments').delete().eq('id', id)); }
   reorderGarments(ids: string[]) { return this.reorder('garments', ids); }
@@ -141,6 +156,8 @@ export class SupabaseRepo implements Repo {
       const { error } = await this.sb.from(t).select('*').limit(1);
       if (error) problems.push(`table "${t}": ${error.message} — run supabase/schema.sql in the SQL Editor`);
     }
+    const worn = await this.sb.from('garments').select('worn_front, worn_back').limit(1);
+    if (worn.error) problems.push(`garments.worn_front/worn_back: ${worn.error.message} — run supabase/schema.sql`);
     const { data, error } = await this.sb.storage.getBucket(BUCKET);
     if (error || !data) problems.push(`storage bucket "${BUCKET}" not found — run supabase/schema.sql`);
     else if (!data.public) problems.push(`storage bucket "${BUCKET}" is private — images would not show; make it public`);
@@ -156,7 +173,7 @@ export class SupabaseRepo implements Repo {
       done.push(`${SEED_CATEGORIES.length} collections`);
     }
     if (!(await count('garments'))) {
-      await this.check(this.sb.from('garments').insert(SEED_GARMENTS.map(g => ({ id: g.id, ...fromGarment(g), sort: g.sort }))));
+      await this.check(this.sb.from('garments').insert(await Promise.all(SEED_GARMENTS.map(async g => ({ id: g.id, ...(await this.withWorn(g)), sort: g.sort })))));
       done.push(`${SEED_GARMENTS.length} products`);
     }
     const { data } = await this.sb.from('settings').select('id').eq('id', 1).maybeSingle();

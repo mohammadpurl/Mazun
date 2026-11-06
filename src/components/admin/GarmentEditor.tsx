@@ -7,6 +7,7 @@ import { KIND_LABEL, SHAPE_LABEL } from '@/lib/labels';
 import { CHART_FIELDS, PRODUCT_KINDS, SHAPES, type Category, type ChartField, type Colour, type Garment, type ProductKind, type Shape, type Size } from '@/lib/types';
 import { api } from './api';
 import { emptyL10n, ImageField, L10nFields } from './fields';
+import { Icon } from '@/components/shop/Icon';
 
 const FIELD_LABEL: Record<ChartField, string> = { bust: 'دور سینه', waist: 'دور کمر', hips: 'دور باسن', length: 'قد لباس', sleeve: 'آستین' };
 
@@ -33,7 +34,7 @@ export function GarmentEditor({ initial, categories, defaultKind }: { initial: G
     for (const [n, row] of Object.entries(initial?.chart ?? {})) c[n] = Object.fromEntries(Object.entries(row).map(([k, v]) => [k, String(v)]));
     return c;
   });
-  const [images, setImages] = useState({ front: initial?.front ?? '', back: initial?.back ?? '', detail: initial?.detail ?? '' });
+  const [images, setImages] = useState({ front: initial?.front ?? '', back: initial?.back ?? '', detail: initial?.detail ?? '', wornFront: initial?.wornFront ?? '', wornBack: initial?.wornBack ?? '' });
   const [uploading, setUploading] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState('');
@@ -48,7 +49,7 @@ export function GarmentEditor({ initial, categories, defaultKind }: { initial: G
     const body = {
       kind, name, type, description, fabric, note, categoryId: isGarment ? categoryId || null : null, price,
       salePrice: salePrice.trim() === '' ? null : salePrice, leadDays, visible, isNew, shape, colors, sizes,
-      chart: isGarment ? chart : null, front: images.front, back: images.back, detail: images.detail,
+      chart: isGarment ? chart : null, front: images.front, back: images.back, detail: images.detail, wornFront: images.wornFront, wornBack: images.wornBack,
     };
     try {
       if (initial) await api(`/api/admin/garments/${initial.id}`, 'PUT', body);
@@ -127,6 +128,8 @@ export function GarmentEditor({ initial, categories, defaultKind }: { initial: G
         <div className="imgs" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
           <ImageField label="روی لباس" value={images.front} onChange={front => setImages(i => ({ ...i, front }))} onBusy={onBusy} />
           <ImageField label="پشت لباس" hint="خالی = عکس رو" value={images.back} onChange={back => setImages(i => ({ ...i, back }))} onBusy={onBusy} />
+          {isGarment && <ImageField label="تن مدل — رو" hint="برای کارت‌ها و صفحهٔ محصول؛ رگال همان عکس بدون مدل را نشان می‌دهد" value={images.wornFront} onChange={wornFront => setImages(i => ({ ...i, wornFront }))} onBusy={onBusy} />}
+          {isGarment && <ImageField label="تن مدل — پشت" hint="خالی = عکس پشتِ بدون مدل" value={images.wornBack} onChange={wornBack => setImages(i => ({ ...i, wornBack }))} onBusy={onBusy} />}
           {isGarment && <ImageField label="جزئیات پارچه" value={images.detail} onChange={detail => setImages(i => ({ ...i, detail }))} onBusy={onBusy} />}
         </div>
       </section>
@@ -141,10 +144,10 @@ export function GarmentEditor({ initial, categories, defaultKind }: { initial: G
                 <input value={c.name[l]} dir={l === 'en' ? 'ltr' : 'rtl'} maxLength={40} onChange={e => setColour(i, { name: { ...c.name, [l]: e.target.value } })} />
               </label>
             ))}
-            <button type="button" className="icon-btn" aria-label="حذف رنگ" disabled={colors.length < 2} onClick={() => setColors(list => list.filter((_, j) => j !== i))}>✕</button>
+            <button type="button" className="icon-btn" aria-label="حذف رنگ" disabled={colors.length < 2} onClick={() => setColors(list => list.filter((_, j) => j !== i))}><Icon name="close" /></button>
           </div>
         ))}
-        <div className="row"><button type="button" className="btn alt sm" disabled={colors.length >= 8} onClick={() => setColors(list => [...list, { name: emptyL10n(), hex: '#D6C7B1' }])}>+ رنگ</button>{err('colors')}</div>
+        <div className="row"><button type="button" className="btn alt sm" disabled={colors.length >= 8} onClick={() => setColors(list => [...list, { name: emptyL10n(), hex: '#D6C7B1' }])}><Icon name="plus" />رنگ</button>{err('colors')}</div>
       </section>
 
       <section className="card stack">
@@ -154,10 +157,10 @@ export function GarmentEditor({ initial, categories, defaultKind }: { initial: G
             <div key={i} className="sizerow">
               <input type="text" aria-label="نام سایز" value={s.n} maxLength={12} dir="ltr" onChange={e => setSize(i, { n: e.target.value.toUpperCase() })} />
               <label className="check"><input type="checkbox" checked={s.ok} onChange={e => setSize(i, { ok: e.target.checked })} /> موجود</label>
-              <button type="button" className="icon-btn" aria-label={`حذف سایز ${s.n}`} onClick={() => setSizes(list => list.filter((_, j) => j !== i))}>✕</button>
+              <button type="button" className="icon-btn" aria-label={`حذف سایز ${s.n}`} onClick={() => setSizes(list => list.filter((_, j) => j !== i))}><Icon name="close" /></button>
             </div>
           ))}
-          <button type="button" className="btn alt sm" onClick={() => setSizes(list => [...list, { n: '', ok: true }])}>+ سایز</button>
+          <button type="button" className="btn alt sm" onClick={() => setSizes(list => [...list, { n: '', ok: true }])}><Icon name="plus" />سایز</button>
         </div>
         {err('sizes')}
       </section>

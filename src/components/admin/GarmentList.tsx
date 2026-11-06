@@ -6,6 +6,7 @@ import { KIND_LABEL } from '@/lib/labels';
 import type { Category, Garment } from '@/lib/types';
 import { api, faNum } from './api';
 import { useReorder } from './useReorder';
+import { Icon } from '@/components/shop/Icon';
 
 export function GarmentList({ initial, categories, currency, accessories }: { initial: Garment[]; categories: Category[]; currency: string; accessories: boolean }) {
   const [items, setItems] = useState(initial);
@@ -27,14 +28,14 @@ export function GarmentList({ initial, categories, currency, accessories }: { in
     <div className="stack">
       <div className="top">
         <h1>محصولات</h1>
-        <Link className="btn" href={accessories ? '/admin/garments/new?kind=accessory' : '/admin/garments/new'}>{accessories ? '+ اکسسوری جدید' : '+ لباس جدید'}</Link>
+        <Link className="btn" href={accessories ? '/admin/garments/new?kind=accessory' : '/admin/garments/new'}><Icon name="plus" />{accessories ? 'اکسسوری جدید' : 'لباس جدید'}</Link>
       </div>
       <div className="row">
         <Link className={`btn sm${accessories ? ' alt' : ''}`} href="/admin/garments">لباس‌ها (رگال)</Link>
         <Link className={`btn sm${accessories ? '' : ' alt'}`} href="/admin/garments?kind=accessory">اکسسوری‌ها (استایلیست)</Link>
       </div>
       <div className="card stack" style={{ gap: 10 }}>
-        <p className="muted small" style={{ margin: 0 }}>{accessories ? 'ترتیب این فهرست ترتیب پیشنهاد استایلیست است.' : 'ترتیب این فهرست همان ترتیب نمایش روی رگال سایت است.'} برای جابه‌جایی، ردیف را بکشید یا از دکمه‌های ▲▼ استفاده کنید.</p>
+        <p className="muted small" style={{ margin: 0 }}>{accessories ? 'ترتیب این فهرست ترتیب پیشنهاد استایلیست است.' : 'ترتیب این فهرست، ترتیب لباس‌ها در بخش مجموعهٔ صفحهٔ اصلی است (رگال لباس‌های روشن و تیره را یکی‌درمیان می‌چیند).'} برای جابه‌جایی، ردیف را بکشید یا از دکمه‌های بالاتر و پایین‌تر استفاده کنید.</p>
         {(err || error) && <div className="msg err" role="alert">{err || error}</div>}
         {items.length === 0 ? <p className="muted">هنوز موردی ثبت نشده.</p> : (
           <div className="glist">
@@ -43,7 +44,7 @@ export function GarmentList({ initial, categories, currency, accessories }: { in
               const out = g.sizes.filter(s => !s.ok).map(s => s.n);
               return (
                 <div key={g.id} {...rp} className={`gi ${rp.className}${g.visible ? '' : ' off'}`}>
-                  <span className="grip" aria-hidden="true">⋮⋮</span>
+                  <span className="grip" aria-hidden="true"><Icon name="grip" /></span>
                   {g.front ? <img src={g.front} alt="" /> : <span className="swatch-thumb" style={{ background: g.colors[0]?.hex ?? '#ccc' }} aria-hidden="true" />}
                   <div className="meta">
                     <b>{g.name.fa || g.name.en}</b>
@@ -53,8 +54,8 @@ export function GarmentList({ initial, categories, currency, accessories }: { in
                     </span>
                   </div>
                   <span className={`badge${g.visible ? ' live' : ''} hide-sm`}>{g.visible ? 'نمایش' : 'مخفی'}</span>
-                  <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(g.id, i - 1)} aria-label="بالاتر">▲</button>
-                  <button type="button" className="icon-btn" disabled={i === items.length - 1} onClick={() => move(g.id, i + 1)} aria-label="پایین‌تر">▼</button>
+                  <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(g.id, i - 1)} aria-label="بالاتر"><Icon name="up" /></button>
+                  <button type="button" className="icon-btn" disabled={i === items.length - 1} onClick={() => move(g.id, i + 1)} aria-label="پایین‌تر"><Icon name="down" /></button>
                   <button type="button" className="btn alt sm hide-sm" onClick={() => toggle(g)}>{g.visible ? 'مخفی کن' : 'نمایش بده'}</button>
                   <Link className="btn sm" href={`/admin/garments/${g.id}`}>ویرایش</Link>
                 </div>

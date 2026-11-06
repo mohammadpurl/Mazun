@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Icon } from '@/components/shop/Icon';
 
 const LINKS = [
   { href: '/admin', label: 'داشبورد' },
@@ -29,12 +30,12 @@ export function Nav({ brand, live, newOrders }: { brand: string; live: boolean; 
         <span className={`badge${live ? ' live' : ''}`} title={live ? '' : 'داده‌ها در فایل data/store.json روی همین سرور ذخیره می‌شوند'}>
           {live ? 'متصل به Supabase' : 'حالت محلی (توسعه)'}
         </span>
-        <Link href="/" target="_blank">دیدن سایت ↗</Link>
+        <Link href="/" target="_blank">دیدن سایت <Icon name="external" /></Link>
         <button type="button" onClick={logout}>خروج</button>
       </aside>
       <nav className="mobile-nav" aria-label="منو">
         {LINKS.map(l => <Link key={l.href} href={l.href} aria-current={active(l.href) ? 'page' : undefined}>{label(l)}</Link>)}
-        <Link href="/" target="_blank">سایت ↗</Link>
+        <Link href="/" target="_blank">سایت <Icon name="external" /></Link>
         <button type="button" onClick={logout}>خروج</button>
       </nav>
     </>

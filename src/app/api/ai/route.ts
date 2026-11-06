@@ -99,7 +99,7 @@ async function tryon(req: Request, b: Record<string, unknown>) {
   if (!g) return fail(400, 'unknown garment');
   const colour = g.colors[Number(b.color) || 0] ?? g.colors[0];
   const garmentImg = await ownImage(req, g.front);
-  const desc = `${g.type.en || g.name.en} in ${colour?.name.en ?? 'its colour'} (${colour?.hex ?? ''}), a ${g.shape} silhouette, floor length, modest and loose-fitting`;
+  const desc = `${g.name.en || g.type.en} in ${colour?.name.en ?? 'its colour'} (${colour?.hex ?? ''}), a ${g.shape} silhouette, modest and loose-fitting${g.description.en ? `. ${g.description.en}` : ''}`;
   const parts: unknown[] = [
     { text: garmentImg
       ? `Virtual try-on. Image 1 is the customer, image 2 is the garment: ${desc}. Dress the customer in this garment, keeping her face, hair, pose, body proportions and the background unchanged, and the garment's design, colour and fabric exact. Photorealistic, natural light. Return one image.`

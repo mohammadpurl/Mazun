@@ -5,6 +5,7 @@ import type { Category, L10n } from '@/lib/types';
 import { api, faNum } from './api';
 import { emptyL10n, ImageField, L10nFields } from './fields';
 import { useReorder } from './useReorder';
+import { Icon } from '@/components/shop/Icon';
 
 
 export function CategoryManager({ initial, counts }: { initial: Category[]; counts: Record<string, number> }) {
@@ -56,10 +57,10 @@ export function CategoryManager({ initial, counts }: { initial: Category[]; coun
     <div className="stack">
       <div className="top">
         <h1>مجموعه‌ها</h1>
-        <button type="button" className="btn" onClick={() => edit(null)}>+ مجموعهٔ جدید</button>
+        <button type="button" className="btn" onClick={() => edit(null)}><Icon name="plus" />مجموعهٔ جدید</button>
       </div>
       <div className="card stack" style={{ gap: 10 }}>
-        <p className="muted small" style={{ margin: 0 }}>چهار مجموعهٔ اول (به همین ترتیب) با عکس و توضیح در صفحهٔ اصلی نمایش داده می‌شوند و همهٔ مجموعه‌های دارای لباس، فیلتر رگال هستند. لباس‌های یک مجموعهٔ مخفی در سایت دیده نمی‌شوند.</p>
+        <p className="muted small" style={{ margin: 0 }}>نام مجموعهٔ هر لباس در مسیر بالای صفحهٔ همان لباس نشان داده می‌شود. لباس‌های یک مجموعهٔ مخفی در سایت دیده نمی‌شوند.</p>
         {(err || error) && <div className="msg err" role="alert">{err || error}</div>}
         {editing === 'new' && form}
         {items.length === 0 && editing !== 'new' && <p className="muted">هنوز مجموعه‌ای ساخته نشده.</p>}
@@ -68,14 +69,14 @@ export function CategoryManager({ initial, counts }: { initial: Category[]; coun
             const rp = rowProps(c.id);
             return editing === c.id ? <div key={c.id}>{form}</div> : (
               <div key={c.id} {...rp} className={`gi ${rp.className}${c.visible ? '' : ' off'}`}>
-                <span className="grip" aria-hidden="true">⋮⋮</span>
+                <span className="grip" aria-hidden="true"><Icon name="grip" /></span>
                 <div className="meta">
                   <b>{c.name.fa || c.name.en}</b>
                   <span className="small muted">{[c.name.ar, c.name.en].filter(Boolean).join(' · ')} · {faNum(counts[c.id] ?? 0)} لباس</span>
                 </div>
                 <span className={`badge${c.visible ? ' live' : ''}`}>{c.visible ? 'نمایش' : 'مخفی'}</span>
-                <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(c.id, i - 1)} aria-label="بالاتر">▲</button>
-                <button type="button" className="icon-btn" disabled={i === items.length - 1} onClick={() => move(c.id, i + 1)} aria-label="پایین‌تر">▼</button>
+                <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(c.id, i - 1)} aria-label="بالاتر"><Icon name="up" /></button>
+                <button type="button" className="icon-btn" disabled={i === items.length - 1} onClick={() => move(c.id, i + 1)} aria-label="پایین‌تر"><Icon name="down" /></button>
                 <button type="button" className="btn alt sm" onClick={() => edit(c)}>ویرایش</button>
                 <button type="button" className="btn del sm" onClick={() => remove(c)}>حذف</button>
               </div>

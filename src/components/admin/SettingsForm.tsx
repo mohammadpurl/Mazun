@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Garment, HomeContent, L10n, Settings } from '@/lib/types';
 import { api } from './api';
 import { ImageField } from './fields';
+import { Icon } from '@/components/shop/Icon';
 
 type L10nKey = 'brand' | 'tagline' | 'ticker' | 'currency' | 'originCity';
 const L10N_FIELDS: [L10nKey, string][] = [
@@ -26,7 +27,7 @@ export function SettingsForm({ initial, garments }: { initial: Settings; garment
     setBusy(true); setErrors({}); setMsg(null);
     try {
       const saved = await api<Settings>('/api/admin/settings', 'PUT', s);
-      setS(saved); setMsg({ ok: true, text: 'ذخیره شد ✓ تغییرات همین حالا در سایت دیده می‌شود.' });
+      setS(saved); setMsg({ ok: true, text: 'ذخیره شد. تغییرات همین حالا در سایت دیده می‌شود.' });
       router.refresh();
     } catch (e) {
       setErrors((e as Error & { errors?: Record<string, string> }).errors ?? {});
@@ -110,7 +111,7 @@ export function SettingsForm({ initial, garments }: { initial: Settings; garment
 
       <div className="row">
         <button type="button" className="btn" disabled={busy || uploading > 0} onClick={save}>{busy ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</button>
-        {msg && <span className={`msg ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.text}</span>}
+        {msg && <span className={`msg ${msg.ok ? 'ok' : 'err'}`} role="status">{msg.ok && <Icon name="check" />} {msg.text}</span>}
       </div>
     </div>
   );

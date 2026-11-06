@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- uploaded cut-outs need object-fit:contain and 3D flips */
 import type { Garment, Shape } from '@/lib/types';
+import { Icon, type DuoIconName } from '../shop/Icon';
 
 /** Outlines from the design, drawn while a garment has no photo yet. */
 export const CLIP: Record<Shape, string> = {
@@ -14,7 +15,7 @@ export const fabric = (tone: string, back = false) => (back
   ? 'linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.14)),linear-gradient(90deg,rgba(0,0,0,.12),rgba(255,255,255,.07) 35%,rgba(0,0,0,.02) 50%,rgba(255,255,255,.07) 65%,rgba(0,0,0,.12)),'
   : 'linear-gradient(180deg,rgba(255,255,255,.12),rgba(0,0,0,.12)),linear-gradient(100deg,rgba(0,0,0,.16),rgba(255,255,255,.18) 27%,rgba(0,0,0,0) 43%,rgba(0,0,0,.14) 61%,rgba(255,255,255,.12) 78%,rgba(0,0,0,.18)),') + tone;
 
-const ACCESSORY_ICON: Record<string, string> = { scarf: 'ph-wave-sine', bag: 'ph-handbag', jewel: 'ph-diamond', shoes: 'ph-high-heel' };
+const ACCESSORY_ICON: Record<string, DuoIconName> = { scarf: 'scarf', bag: 'handbag', jewel: 'jewel', shoes: 'shoes' };
 
 /** A product picture: the uploaded photo when there is one, otherwise the design's coloured silhouette
  *  (garments) or a soft tile with an icon (accessories). Fills its positioned parent. */
@@ -27,7 +28,7 @@ export function Art({ g, color = 0, view = 'front', inset }: { g: Garment; color
   if (g.kind !== 'garment') {
     return (
       <span className="ph icon" aria-hidden="true" style={{ background: `radial-gradient(70% 70% at 50% 40%, ${tone}55, transparent 70%), var(--linen)` }}>
-        <i className={`ph-duotone ${ACCESSORY_ICON[g.kind]}`} style={{ fontSize: 'clamp(36px,5vw,64px)', color: '#55573F', position: 'relative', zIndex: 1 }} />
+        {ACCESSORY_ICON[g.kind] && <Icon name={ACCESSORY_ICON[g.kind]} weight="duotone" style={{ fontSize: 'clamp(36px,5vw,64px)', color: 'var(--main)', position: 'relative', zIndex: 1 }} />}
       </span>
     );
   }

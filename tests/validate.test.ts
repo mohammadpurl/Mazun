@@ -13,8 +13,11 @@ test('normalizePhone keeps digits, converts Persian/Arabic digits, drops 00 pref
   assert.equal(normalizePhone(42), '');
 });
 
+/** An ISO day this many days from today (UTC), so date tests do not expire. */
+const daysFromNow = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
 test('validateOrder accepts a bag of lines and trims the customer fields', () => {
-  const r = validateOrder({ items: [line, { ...line, garmentId: 'reem', qty: '2' }], customerName: '  Sara  ', phone: '+968 91234567', lang: 'ar', eventDate: '2026-11-01' });
+  const r = validateOrder({ items: [line, { ...line, garmentId: 'reem', qty: '2' }], customerName: '  Sara  ', phone: '+968 91234567', lang: 'ar', eventDate: daysFromNow(30) });
   assert.ok(r.ok);
   assert.equal(r.value.items.length, 2);
   assert.equal(r.value.items[1].qty, 2);
@@ -91,4 +94,11 @@ test('validateSettings requires the handle of the chosen channel and cleans home
   assert.equal(ok.value.home.atelier, '');
   assert.equal(ok.value.home.featuredId, 'zayna');
   assert.ok(!validateSettings({ ...DEFAULT_SETTINGS, channel: 'telegram', telegram: 'a b' }).ok);
+});
+
+test('validateOrder takes only real event days from yesterday on', () => {
+  const order = (eventDate: string) => validateOrder({ items: [line], customerName: 'Ali', phone: '91234567', eventDate });
+  for (const d of ['2026-02-30', '2026-13-45', '2026-00-10', '2020-01-01', daysFromNow(-3), `${daysFromNow(5)}X`, `${daysFromNow(5)}T10:00:00Z`, '9999-12-31']) assert.ok(!order(d).ok, d);
+  for (const d of [daysFromNow(-1), daysFromNow(0), daysFromNow(400)]) assert.ok(order(d).ok, d);
+  assert.ok(validateOrder({ items: [line], customerName: 'Ali', phone: '91234567', eventDate: '' }).ok, 'the date is optional');
 });

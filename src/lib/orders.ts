@@ -2,6 +2,7 @@
    live catalogue and priced on the server, so the browser can never set a price or order a hidden piece. */
 import { effectivePrice } from './fit';
 import type { Category, Garment, L10n, Lang, NewOrder, OrderInput, OrderItem } from './types';
+import { ONE_SIZE } from './defaults';
 
 export type BuildResult = { ok: true; order: NewOrder } | { ok: false; error: 'unavailable' | 'soldout'; garmentId: string };
 
@@ -31,6 +32,6 @@ export function buildOrder(input: OrderInput, garments: Garment[], categories: C
   return { ok: true, order: { ...customer, items, total } };
 }
 
-/** One-line summary of an order's pieces, e.g. "Zayna (M) ×2, Reem (S)". */
-export const itemsSummary = (items: OrderItem[]) =>
-  items.map(i => `${i.name} (${i.size})${i.qty > 1 ? ` ×${i.qty}` : ''}`).join('، ');
+/** One-line summary of an order's pieces, e.g. "Zayna (M) ×2, Reem (S)"; a free-size piece goes without a size. */
+export const itemsSummary = (items: OrderItem[], sep = '، ', n: (v: number) => string = String) =>
+  items.map(i => `${i.name}${i.size === ONE_SIZE ? '' : ` (${i.size})`}${i.qty > 1 ? ` ×${n(i.qty)}` : ''}`).join(sep);

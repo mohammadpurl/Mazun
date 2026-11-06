@@ -29,7 +29,7 @@ test('publicCatalog hides hidden products, garments of hidden collections and co
   const cats = [...SEED_CATEGORIES.map(c => (c.id === 'evening' ? { ...c, visible: false } : c)), { ...SEED_CATEGORIES[0], id: 'empty', sort: 9 }];
   const gs = SEED_GARMENTS.map(g => ({ ...g, visible: g.id !== 'zayna' }));
   const r = publicCatalog(cats, gs);
-  assert.equal(r.garments.length, 16 - 1 - 2, 'hidden Zayna and the two evening pieces are out; accessories stay');
+  assert.equal(r.garments.length, SEED_GARMENTS.length - 1 - 2, 'hidden Zayna and the two evening pieces are out; accessories stay');
   assert.deepEqual(r.categories.map(c => c.id), ['abayas', 'modest', 'atelier']);
 });
 
@@ -66,7 +66,8 @@ test('dashboardStats counts by shop day and leaves cancelled orders out of reven
     mk(4, '2026-10-19T08:00:00Z', 'cancelled', 999),
     mk(5, '2026-09-30T10:00:00Z', 'delivered', 50),
   ];
-  const s = dashboardStats(orders, SEED_GARMENTS, now);
+  const withSoldOut = SEED_GARMENTS.map(g => (g.id === 'reem' ? { ...g, sizes: g.sizes.map(s => (s.n === 'XL' ? { ...s, ok: false } : s)) } : g));
+  const s = dashboardStats(orders, withSoldOut, now);
   assert.equal(dayKey(new Date('2026-10-18T21:00:00Z')), '2026-10-19');
   assert.equal(s.ordersToday, 2);
   assert.equal(s.openOrders, 2);

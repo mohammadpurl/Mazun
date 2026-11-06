@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { effectivePrice } from '@/lib/fit';
 import { accessoriesByRole, chipPicks, lookTotal, presetPicks, replacePick, type Picks } from '@/lib/stylist';
 import { ACCESSORY_KINDS, type AccessoryKind } from '@/lib/types';
+import { Icon } from '../shop/Icon';
+import { num } from '../shop/tokens';
 import { Art } from './Art';
 import { useBoutique } from './Boutique';
 
@@ -100,7 +102,7 @@ export function Stylist() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
           <span className="kicker">{t.syK} · {b.ai.text ? t.aiResp : t.sampleResp}</span>
           <h1>{t.syT} <em>{tx(base.name)}</em></h1>
-          <p style={{ margin: 0, fontSize: 17, fontStyle: 'italic', color: 'rgba(41,35,31,.78)', maxWidth: '56ch' }}>{summary ?? t.occSummary[occ]}</p>
+          <p style={{ margin: 0, fontSize: 17, fontStyle: 'italic', color: 'var(--muted)', maxWidth: '56ch' }}>{summary ?? t.occSummary[occ]}</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <span className="label">{t.occasion}</span>
@@ -114,8 +116,9 @@ export function Stylist() {
             <div className="sty-item" style={{ gridArea: 'base', gap: 14 }}>
               <div className="pic" style={{ aspectRatio: '2/3', background: 'transparent' }}><Art g={base} /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span className="role">01 · {t.foundation}</span>
-                <span style={{ fontSize: 20, lineHeight: 1.2 }}>{tx(base.name)} — {tx(base.type)}</span>
+                <span className="role">{num(1, b.lang, 2)} · {t.foundation}</span>
+                {/* the name alone: every name already says what the piece is ("عبای زیتونی کمربنددار"), so a type after it repeats */}
+                <span style={{ fontSize: 20, lineHeight: 1.2 }}>{tx(base.name)}</span>
                 <span style={{ fontSize: 15 }}>{b.price(effectivePrice(base))}</span>
                 <button type="button" className="tlink u" style={{ alignSelf: 'flex-start', padding: '4px 0' }} onClick={() => b.openProduct(base.id)}>{t.viewPiece}</button>
               </div>
@@ -130,13 +133,13 @@ export function Stylist() {
                     <Art g={a} />
                   </button>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span className="role">{String(i + 2).padStart(2, '0')} · {t.roles[k]}</span>
+                    <span className="role">{num(i + 2, b.lang, 2)} · {t.roles[k]}</span>
                     <span style={{ fontSize: 17, lineHeight: 1.25 }}>{tx(a.name)}</span>
                     <span style={{ fontSize: 15 }}>{b.price(effectivePrice(a))}</span>
                     {tx(a.note) && <p>{tx(a.note)}</p>}
                     {byRole[k].length > 1 && (
                       <button type="button" className="tlink" style={{ alignSelf: 'flex-start', padding: '6px 0 0' }} onClick={() => { setPicks(p => replacePick(byRole, p, k)); setSaved(false); }}>
-                        <i className="ph-duotone ph-arrows-clockwise" />{t.replace}
+                        <Icon name="turn" size={18} />{t.replace}
                       </button>
                     )}
                   </div>
@@ -149,9 +152,9 @@ export function Stylist() {
               <span className="label">{t.total} · {t.pieces(pieceCount)}</span>
               <span style={{ fontSize: 34, lineHeight: 1.1 }}>{b.price(total)}</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              <button type="button" className="btn ghost" onClick={saveLook}><i className={saved ? 'ph-fill ph-bookmark-simple' : 'ph-duotone ph-bookmark-simple'} style={{ fontSize: 18 }} />{saved ? t.saved : t.save}</button>
-              <button type="button" className="btn" onClick={addLook}><i className="ph-duotone ph-handbag" style={{ fontSize: 18 }} />{t.addLook}</button>
+            <div className="sty-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              <button type="button" className="btn ghost" onClick={saveLook}><Icon name="bookmark" weight={saved ? 'duotone' : 'light'} size={18} style={saved ? { color: 'var(--main)' } : undefined} />{saved ? t.saved : t.save}</button>
+              <button type="button" className="btn" onClick={addLook}><Icon name="handbag" size={18} />{t.addLook}</button>
             </div>
           </div>
         </div>
@@ -159,19 +162,19 @@ export function Stylist() {
         <aside style={{ flex: '0 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div className="label-row">
             <h2 style={{ margin: 0, fontWeight: 400, fontSize: 28, lineHeight: 1.1 }}>{t.chatT}</h2>
-            <span style={{ fontSize: 12, fontStyle: 'italic', color: 'rgba(41,35,31,.68)' }}>{b.ai.text ? t.aiResp : t.sampleResp}</span>
+            <span style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--muted)' }}>{b.ai.text ? t.aiResp : t.sampleResp}</span>
           </div>
           <div ref={chat} className="chat" aria-live="polite">
             <div className="msg"><small>{t.stylist}</small><p>{t.greet(tx(base.type) || tx(base.name))}</p></div>
             {msgs.map((m, i) => <div key={i} className={`msg${m.me ? ' me' : ''}`}><small>{m.me ? t.you : t.stylist}</small><p>{m.text}</p></div>)}
-            {typing && <span style={{ fontSize: 14, fontStyle: 'italic', color: 'rgba(41,35,31,.66)' }}>{t.composing}</span>}
+            {typing && <span style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--muted)' }}>{t.composing}</span>}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {t.chips.map((c, i) => <button key={c} type="button" className="chip" disabled={typing} onClick={() => send(c, i)}>{c}</button>)}
           </div>
           <form className="ask" onSubmit={e => { e.preventDefault(); const v = draft.trim(); if (v && !typing) send(v, null); }}>
             <input value={draft} onChange={e => setDraft(e.target.value)} placeholder={t.ph} maxLength={400} aria-label={t.ph} />
-            <button type="submit" className="ibtn" aria-label={t.send} disabled={typing}><i className="ph-duotone ph-paper-plane-tilt flip-rtl" style={{ fontSize: 20 }} /></button>
+            <button type="submit" className="ibtn" aria-label={t.send} disabled={typing}><Icon name="send" size={20} /></button>
           </form>
         </aside>
       </div>

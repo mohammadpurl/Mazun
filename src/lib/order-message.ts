@@ -1,5 +1,7 @@
 /* The message the customer sends to the shop after checkout, and the chat link that carries it.
    Shared by the shop (customer -> shop) and the admin order list (shop -> customer). */
+import { ONE_SIZE } from './defaults';
+import { itemsSummary } from './orders';
 import type { Lang, OrderItem, Settings } from './types';
 
 export const LOCALE: Record<Lang, string> = { en: 'en-GB', ar: 'ar-OM', fa: 'fa-IR' };
@@ -21,16 +23,16 @@ const HEAD: Record<Lang, (id: string) => string> = {
   ar: id => `مرحباً، طلب رقم ${id}`,
   fa: id => `سلام، سفارش شمارهٔ ${id}`,
 };
-const WORDS: Record<Lang, { size: string; total: string; name: string }> = {
-  en: { size: 'Size', total: 'Total', name: 'Name' },
-  ar: { size: 'المقاس', total: 'المجموع', name: 'الاسم' },
-  fa: { size: 'سایز', total: 'جمع', name: 'نام' },
+const WORDS: Record<Lang, { size: string; oneSize: string; total: string; name: string }> = {
+  en: { size: 'Size', oneSize: 'One size', total: 'Total', name: 'Name' },
+  ar: { size: 'المقاس', oneSize: 'مقاس واحد', total: 'المجموع', name: 'الاسم' },
+  fa: { size: 'سایز', oneSize: 'تک‌سایز', total: 'جمع', name: 'نام' },
 };
 
 export function orderMessage(o: OrderSummary, lang: Lang, s: Pick<Settings, 'currency'>): string {
   const w = WORDS[lang];
   const lines = o.items.map(i =>
-    `• ${i.name}${i.color ? ` (${i.color})` : ''} — ${w.size} ${i.size}${i.qty > 1 ? ` ×${formatNumber(i.qty, lang)}` : ''} — ${formatPrice(i.price * i.qty, lang, s)}`);
+    `• ${i.name}${i.color ? ` (${i.color})` : ''} — ${i.size === ONE_SIZE ? w.oneSize : `${w.size} ${i.size}`}${i.qty > 1 ? ` ×${formatNumber(i.qty, lang)}` : ''} — ${formatPrice(i.price * i.qty, lang, s)}`);
   return [HEAD[lang](formatNumber(o.id, lang)), ...lines, `${w.total}: ${formatPrice(o.total, lang, s)}`, `${w.name}: ${o.customerName}`].join('\n');
 }
 
@@ -44,5 +46,14 @@ export function shopChatLink(s: Pick<Settings, 'channel' | 'whatsapp' | 'telegra
 }
 
 /** WhatsApp link from the admin panel to a customer's number. */
+/** The admin's first message to a customer about an order, in the language the customer ordered in. */
+export function customerGreeting(o: { id: number; customerName: string; items: OrderItem[]; lang: Lang }): string {
+  const n = (v: number) => formatNumber(v, o.lang);
+  const pieces = itemsSummary(o.items, o.lang === 'en' ? ', ' : '، ', n);
+  if (o.lang === 'en') return `Hello ${o.customerName}, we are getting in touch about your order no. ${n(o.id)} (${pieces}).`;
+  if (o.lang === 'ar') return `مرحباً ${o.customerName}، نتواصل معكِ بخصوص طلبكِ رقم ${n(o.id)} (${pieces}).`;
+  return `سلام ${o.customerName}، دربارهٔ سفارش شمارهٔ ${n(o.id)} (${pieces}) با شما تماس می‌گیریم.`;
+}
+
 export const customerWhatsAppLink = (phone: string, text = '') =>
   `https://wa.me/${phone.replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;

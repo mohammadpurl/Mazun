@@ -2,6 +2,7 @@ import { guardAdminApi } from '@/lib/auth';
 import { toCsv } from '@/lib/csv';
 import { db } from '@/lib/db';
 import { STATUS_LABEL } from '@/lib/labels';
+import { ONE_SIZE } from '@/lib/defaults';
 
 export async function GET(req: Request) {
   const denied = await guardAdminApi(req);
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
   const csv = toCsv([
     ['شماره', 'تاریخ ثبت (UTC)', 'وضعیت', 'اقلام', 'تعداد قطعه', 'جمع', 'نام مشتری', 'تلفن', 'شهر', 'آدرس', 'تاریخ مناسبت', 'یادداشت مشتری', 'یادداشت مدیر'],
     ...orders.map(o => [o.id, o.createdAt.slice(0, 16).replace('T', ' '), STATUS_LABEL[o.status],
-      o.items.map(i => `${i.name} | ${i.color} | ${i.size} | ×${i.qty} | ${i.price}`).join('\n'), o.items.reduce((a, i) => a + i.qty, 0), o.total,
+      o.items.map(i => `${i.name} | ${i.color} | ${i.size === ONE_SIZE ? 'تک‌سایز' : i.size} | ×${i.qty} | ${i.price}`).join('\n'), o.items.reduce((a, i) => a + i.qty, 0), o.total,
       o.customerName, o.phone, o.city, o.address, o.eventDate ?? '', o.note, o.adminNote]),
   ]);
   return new Response(csv, {
