@@ -5,7 +5,7 @@ const empty = (): L10n => l('', '', '');
 
 export const DEFAULT_SETTINGS: Settings = {
   brand: l('MAZUN ATELIER', 'مزون أتيليه', 'آتلیه مزون'),
-  tagline: l('Contemporary abayas and evening wear, made in Oman.', 'عباءات وأزياء سهرة معاصرة، صُنعت في عُمان.', 'عبا و لباس مجلسی معاصر، ساخت عمان.'),
+  tagline: l('Abaya boutique · Oman', 'بوتيك عباءات · عُمان', 'بوتیک عبا · عمان'),
   ticker: l('New arrivals every week', 'وصول قطع جديدة كل أسبوع', 'هر هفته طرح‌های تازه'),
   currency: l('OMR', 'ر.ع.', 'ریال عمانی'),
   channel: 'whatsapp',
@@ -72,7 +72,6 @@ export const SEED_CATEGORIES: Category[] = [
     description: l('Hand-embroidered pieces, made in small numbers in Muscat.', 'قطع مطرزة يدوياً، تُصنع بكميات محدودة في مسقط.', 'قطعه‌های دست‌دوزی‌شده، در تعداد محدود در مسقط.') },
 ];
 
-const S5 = ['XS', 'S', 'M', 'L', 'XL'];
 const sizes = (list: string[], out: string[] = []): Size[] => list.map(n => ({ n, ok: !out.includes(n) }));
 
 interface SeedSpec {
@@ -81,38 +80,55 @@ interface SeedSpec {
 }
 
 const SPECS: SeedSpec[] = [
-  { id: 'zayna', cat: 'abayas', shape: 'abaya', price: 168, name: l('Zayna', 'زينة', 'زینه'),
-    type: l('Olive satin abaya', 'عباءة ساتان زيتونية', 'عبای ساتن زیتونی'), colors: [CO.olive], sizes: sizes(S5),
-    d: l('An olive satin abaya with a tie waist and gold-edged cuffs.', 'عباءة ساتان زيتونية بحزام وأكمام بحواف ذهبية.', 'عبای ساتن زیتونی با کمربند و سرآستین لبه‌طلایی.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'layal', cat: 'evening', shape: 'gown', price: 240, name: l('Layal', 'ليال', 'لیال'),
-    type: l('Espresso pleated gown', 'فستان بني داكن مطوي', 'پیراهن پلیسه قهوه‌ای تیره'), colors: [CO.espresso], sizes: sizes(S5),
-    d: l('A long-sleeved espresso gown with a fitted waist and a fully pleated skirt.', 'فستان بني داكن بأكمام طويلة وخصر محدد وتنورة مطوية بالكامل.', 'پیراهن قهوه‌ای تیره با آستین بلند، کمر فرم‌دار و دامن پلیسه.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'noor', cat: 'abayas', shape: 'abaya', price: 145, name: l('Noor', 'نور', 'نور'),
-    type: l('Ivory embroidered abaya', 'عباءة عاجية مطرزة', 'عبای عاجی گلدوزی‌شده'), colors: [CO.ivory], sizes: sizes(S5),
-    d: l('A soft, textured ivory abaya with a gold embroidered front panel, cuffs and back yoke.', 'عباءة ناعمة بملمس الكتان، بلوحة أمامية وأكمام وظهر مطرزة بالذهبي.', 'عبایی نرم و بافت‌دار با گلدوزی طلایی روی جلو، سرآستین و پشت.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'reem', cat: 'evening', isNew: true, shape: 'gown', price: 210, name: l('Reem', 'ريم', 'ریم'),
-    type: l('Rose lace abaya', 'عباءة وردية بدانتيل', 'عبای گلبهی توری'), colors: [CO.rose], sizes: sizes(S5, ['XL']),
-    d: l('A flowing rose abaya with bell sleeves, a tie neck and a lace-edged hem.', 'عباءة وردية منسدلة بأكمام واسعة وربطة عند العنق وحاشية من الدانتيل.', 'عبای گلبهی روان با آستین‌های گشاد، پاپیون یقه و لبهٔ توری.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'salma', cat: 'atelier', shape: 'abaya', price: 285, name: l('Salma', 'سلمى', 'سلمی'),
-    type: l('Black abaya with ivory trim', 'عباءة سوداء بحواف عاجية', 'عبای مشکی با لبهٔ عاجی'), colors: [CO.black], sizes: sizes(['XS', 'S', 'M', 'L']),
-    d: l('A black open abaya with wide sleeves, edged in a fine ivory trim.', 'عباءة سوداء مفتوحة بأكمام واسعة وحواف عاجية رفيعة.', 'عبای مشکی جلوباز با آستین‌های گشاد و لبهٔ باریک عاجی.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'dana', cat: 'abayas', isNew: true, shape: 'abaya', price: 175, name: l('Dana', 'دانة', 'دانه'),
-    type: l('Navy kimono abaya', 'عباءة كيمونو كحلية', 'عبای کیمونویی سرمه‌ای'), colors: [CO.navy], sizes: sizes(S5, ['XS']),
-    d: l('A navy abaya with deep kimono sleeves and a clean open front.', 'عباءة كحلية بأكمام كيمونو عريضة وواجهة مفتوحة نظيفة.', 'عبای سرمه‌ای با آستین‌های عریض کیمونویی و جلوی باز ساده.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'hessa', cat: 'modest', isNew: true, shape: 'dress', price: 135, name: l('Hessa', 'حصة', 'حصه'),
-    type: l('Navy abaya with gold trim', 'عباءة كحلية بحواف ذهبية', 'عبای سرمه‌ای با لبهٔ طلایی'), colors: [CO.navy], sizes: sizes(S5),
-    d: l('A navy open abaya with wide sleeves and a fine gold trim.', 'عباءة كحلية مفتوحة بأكمام واسعة وحواف ذهبية رفيعة.', 'عبای سرمه‌ای جلوباز با آستین‌های گشاد و لبهٔ باریک طلایی.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
-  { id: 'mazun', cat: 'modest', shape: 'kaftan', price: 128, name: l('Mazun', 'مزون', 'مزون'),
-    type: l('Ivory embroidered kaftan', 'قفطان عاجي مطرز', 'کافتان عاجی گلدوزی‌شده'), colors: [CO.ivory], sizes: sizes(S5),
-    d: l('An ivory kaftan with a gold embroidered front panel and matching cuffs.', 'قفطان عاجي بلوحة أمامية مطرزة بالذهبي وأكمام متناسقة.', 'کافتان عاجی با گلدوزی طلایی روی جلو و سرآستین‌های هماهنگ.'),
-    f: l('Fabric and care to be confirmed by the atelier.', 'يؤكد الأتيليه القماش وطريقة العناية.', 'پارچه و نگهداری را آتلیه تأیید می‌کند.') },
+  // The garments follow what Omani women wear: talli braid, Dhofari velvet, kandoura and sirwal, silver-jewellery motifs.
+  { id: 'zayna', cat: 'abayas', shape: 'abaya', price: 168, name: l('Olive Belted Abaya', 'عباءة زيتونية بحزام', 'عبای زیتونی کمربنددار'),
+    type: l('Belted abaya', 'عباءة بحزام', 'عبای کمربنددار'), colors: [{ name: l('Olive', 'زيتوني', 'زیتونی'), hex: '#5F6336' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('A wrap abaya closed with a soft self belt. The belt ends are tipped in hand-engraved brass, and the cuffs carry a small tonal motif.',
+      'عباءة ملفوفة تُغلق بحزام من القماش نفسه، وطرفا الحزام من النحاس الأصفر المنقوش يدوياً، وعلى الأكمام نقش صغير بلون القماش.',
+      'عبایی جلوبسته که با کمربندی از همان پارچه بسته می‌شود. سرهای کمربند از برنج قلم‌زنی‌شده‌اند و روی سرآستین‌ها نقشی کوچک و هم‌رنگ دوخته شده.'),
+    f: l('Satin-back crepe', 'كريب بظهر ساتان', 'کرپ ساتن‌پشت') },
+  { id: 'layal', cat: 'evening', shape: 'gown', price: 240, name: l('Garnet Dhofari Velvet Gown', 'ثوب ظفاري مخملي عقيقي', 'پیراهن مخمل ظفاری یاقوتی'),
+    type: l('Velvet gown', 'ثوب مخملي', 'پیراهن مخمل'), colors: [{ name: l('Garnet', 'عقيقي', 'یاقوتی'), hex: '#7A1420' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('Our reading of the Dhofari abu thail: ankle length at the front, a long train at the back, fine gold zari at the neck, the front and the cuffs.',
+      'قراءتنا لثوب أبو ذيل الظفاري: يصل إلى الكاحل من الأمام وينسدل بذيل طويل من الخلف، مع زري ذهبي ناعم على الرقبة والصدر والأكمام.',
+      'برداشت ما از لباس «ابوذیل» ظفار: جلو تا مچ پا و پشت با دنباله‌ای بلند، با زری‌دوزی طلایی ظریف دور یقه، جلوی لباس و سرآستین‌ها.'),
+    f: l('Silk velvet', 'مخمل حريري', 'مخمل ابریشمی') },
+  { id: 'noor', cat: 'abayas', shape: 'abaya', price: 145, name: l('Ivory Silver-Thread Abaya', 'عباءة عاجية بتطريز فضي', 'عبای عاجی با دوخت نقره‌ای'),
+    type: l('Embroidered abaya', 'عباءة مطرزة', 'عبای گلدوزی‌شده'), colors: [{ name: l('Ivory', 'عاجي', 'عاجی'), hex: '#E8DEC9' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('A closed abaya with one band of silver-thread embroidery down the front. The small triangles and dots come from Omani silver jewellery.',
+      'عباءة مغلقة يزيّنها شريط واحد من التطريز بالخيط الفضي على الأمام، ومثلثاتها ونقاطها الصغيرة مأخوذة من الحليّ الفضية العُمانية.',
+      'عبایی جلوبسته با یک نوار گلدوزی نخ نقره‌ای در جلو. مثلث‌ها و نقطه‌های ریزش از جواهرات نقرهٔ عمانی آمده‌اند.'),
+    f: l('Silk crepe', 'كريب حريري', 'کرپ ابریشم') },
+  { id: 'reem', cat: 'evening', isNew: true, shape: 'kaftan', price: 210, name: l('Rose Talli Kaftan', 'قفطان وردي بالتلي', 'کفتان گلبهی با تلی'),
+    type: l('Kaftan', 'قفطان', 'کفتان'), colors: [{ name: l('Dusty rose', 'وردي مغبر', 'گلبهی'), hex: '#BF857B' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('A flowing kaftan with a soft self belt, edged in hand-woven talli, silver and soft gold, at the neck, down the front and at the sleeves: the braid Omani women wear for celebrations.',
+      'قفطان منساب بحزام من القماش نفسه، بحواف من التلي المنسوج يدوياً بالفضي والذهبي الناعم عند الرقبة وعلى طول الأمام والأكمام، وهو التلي الذي تتزيّن به المرأة العُمانية في المناسبات.',
+      'کفتانی روان با کمربندی از همان پارچه که دور یقه، جلوی لباس و سرآستین‌هایش با «تلی» دست‌باف نقره‌ای و طلایی ملایم تمام شده؛ همان نواری که زنان عمانی در جشن‌ها می‌پوشند.'),
+    f: l('Silk crepe', 'كريب حريري', 'کرپ ابریشم') },
+  { id: 'salma', cat: 'atelier', shape: 'abaya', price: 285, name: l('Black Talli Bisht Abaya', 'عباءة بشت سوداء بالتلي', 'عبای بشتی مشکی با تلی'),
+    type: l('Bisht abaya', 'عباءة بشت', 'عبای بشتی'), colors: [{ name: l('Black', 'أسود', 'مشکی'), hex: '#151313' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('A bisht-cut open abaya over its own slip, edged in gold talli, with one line of talli down the back.',
+      'عباءة مفتوحة بقصّة البشت فوق فستان داخلي، بحواف من التلي الذهبي وخطّ واحد من التلي على الظهر.',
+      'عبای جلوباز با برش بِشت روی پیراهن زیرِ خودش، با حاشیهٔ تلی طلایی و یک خط تلی در پشت.'),
+    f: l('Matte crepe', 'كريب مطفي', 'کرپ مات') },
+  { id: 'dana', cat: 'abayas', isNew: true, shape: 'abaya', price: 175, name: l('Midnight Cape-Sleeve Abaya', 'عباءة كحلية بأكمام منسدلة', 'عبای سرمه‌ای با آستین شنلی'),
+    type: l('Cape-sleeve abaya', 'عباءة بأكمام منسدلة', 'عبای آستین‌شنلی'), colors: [{ name: l('Midnight navy', 'كحلي داكن', 'سرمه‌ای تیره'), hex: '#20243F' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('Cape sleeves fall from the shoulder to the hip. Tone-on-tone embroidery runs across the shoulders and down the front.',
+      'أكمام على هيئة كاب تنسدل من الكتف إلى الورك، وتطريز بلون القماش نفسه على الكتفين وعلى طول الأمام.',
+      'آستین‌های شنلی از شانه تا باسن می‌افتند. گلدوزی هم‌رنگ روی شانه‌ها و لبه‌های جلو کار شده.'),
+    f: l('Fluid matte crepe', 'كريب مطفي منساب', 'کرپ مات روان') },
+  { id: 'hessa', cat: 'modest', isNew: true, shape: 'dress', price: 135, name: l('Sage Kandoura & Sirwal Set', 'طقم كندورة وسروال أخضر مريمي', 'ست کندوره و سروال سبز مریم‌گلی'),
+    type: l('Kandoura and sirwal', 'كندورة وسروال', 'کندوره و سروال'), colors: [{ name: l('Sage', 'أخضر مريمي', 'سبز مریم‌گلی'), hex: '#8E9479' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('The Omani kandoura and sirwal, cut for today: a knee-length tunic over wide trousers, with talli at the neck, the cuffs and the ankles.',
+      'الكندورة والسروال العُمانيان بقصّة اليوم: ثوب يصل إلى الركبة فوق سروال واسع، مع التلي عند الرقبة والأكمام والكاحلين.',
+      'کندوره و سروال عمانی با برش امروزی: پیراهنی تا زانو روی شلوار گشاد، با تلی دور یقه، سرآستین‌ها و مچ پا.'),
+    f: l('Crepe', 'كريب', 'کرپ') },
+  { id: 'mazun', cat: 'modest', shape: 'abaya', price: 128, name: l('Champagne Diamond-Band Abaya', 'عباءة شامبانيا بشريط معيّنات', 'عبای شامپاینی با نوار لوزی'),
+    type: l('Kimono-sleeve abaya', 'عباءة بأكمام كيمونو', 'عبای آستین‌کیمونویی'), colors: [{ name: l('Champagne', 'شامبانيا', 'شامپاینی'), hex: '#C9B18E' }], sizes: sizes(['S', 'M', 'L', 'XL']),
+    d: l('A light open abaya with kimono sleeves. A band of diamond motifs in ivory and gold runs round the hem and the sleeves, with a fine trim down the front.',
+      'عباءة مفتوحة خفيفة بأكمام كيمونو، يدور حول حاشيتها وأكمامها شريط من نقوش المعيّنات بالعاجي والذهبي، مع حافة رفيعة على طول الأمام.',
+      'عبای جلوباز و سبک با آستین کیمونویی. نواری از نقش لوزی به رنگ عاجی و طلایی دور دامن و سرآستین‌ها می‌چرخد و لبهٔ جلو حاشیه‌ای ظریف دارد.'),
+    f: l('Brushed linen and silk', 'كتان وحرير مصقول', 'کتان و ابریشم برس‌خورده') },
   // Accessories the stylist pairs with a garment.
   { id: 'shayla-silk', kind: 'scarf', price: 38, name: l('Silk georgette shayla', 'شيلة جورجيت حرير', 'شال جورجت ابریشم'), type: l('Shayla', 'شيلة', 'شال'), colors: [CO.champagne], sizes: sizes(['ONE']),
     note: l('Champagne lifts the base colour and softens the sheen at the face.', 'الشامبانيا تُضيء اللون الأساسي وتليّن اللمعة قرب الوجه.', 'شامپاینی رنگ پایه را روشن‌تر و درخشش کنار صورت را نرم‌تر می‌کند.') },
@@ -132,8 +148,8 @@ const SPECS: SeedSpec[] = [
     note: l('A pointed toe shows past the hem and lengthens the line.', 'مقدمة مدببة تظهر من تحت الحاشية وتُطيل الخط.', 'نوک تیز کفش از زیر لبهٔ لباس پیدا می‌شود و قامت را کشیده‌تر نشان می‌دهد.') },
 ];
 
-/** Which photo in public/images/transparent belongs to which seeded garment. */
-export const SEED_PHOTOS: Record<string, number> = { noor: 1, reem: 2, dana: 3, salma: 4, hessa: 5, zayna: 6, layal: 7, mazun: 8 };
+/** Seeded garments with a front and back cut-out in public/images/garments/<id>-front.webp and -back.webp. */
+export const SEED_PHOTOS = new Set(['noor', 'reem', 'dana', 'salma', 'hessa', 'zayna', 'layal', 'mazun']);
 
 /** The design's catalogue, used to seed an empty store. Accessories have no photos yet and draw a soft tile. */
 export const SEED_GARMENTS: Garment[] = SPECS.map((s, i) => ({
@@ -150,8 +166,8 @@ export const SEED_GARMENTS: Garment[] = SPECS.map((s, i) => ({
   colors: s.colors,
   sizes: s.sizes,
   shape: s.shape ?? 'abaya',
-  front: SEED_PHOTOS[s.id] ? `/images/transparent/abaya-${SEED_PHOTOS[s.id]}-front.png` : '',
-  back: SEED_PHOTOS[s.id] ? `/images/transparent/abaya-${SEED_PHOTOS[s.id]}-back.png` : '',
+  front: SEED_PHOTOS.has(s.id) ? `/images/garments/${s.id}-front.webp` : '',
+  back: SEED_PHOTOS.has(s.id) ? `/images/garments/${s.id}-back.webp` : '',
   detail: '',
   chart: null,
   leadDays: 0,
