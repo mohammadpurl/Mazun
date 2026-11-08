@@ -384,6 +384,8 @@ html:has(.mz-root) body{margin:0}
 .mz-form.is-small .mz-form__pole{top:436px;width:5px;height:26px;margin-left:-2.5px}
 .mz-form.is-small .mz-form__base{width:110px;height:12px;margin-left:-55px}
 .mz-pd__thumbs{display:flex;gap:12px}
+.mz-pd__more{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.mz-pd__more img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface)}
 .mz-thumb{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:var(--muted);transition:transform .7s cubic-bezier(.22,1,.36,1)}
 .mz-thumb:hover{transform:translateY(-3px)}
 .mz-thumb > span{width:76px;height:100px;border:1px solid transparent;display:flex;align-items:center;justify-content:center}
@@ -444,6 +446,7 @@ html:has(.mz-root) body{margin:0}
   .mz-pd__top{gap:0}
   .mz-pd__gallery{flex-basis:100%;gap:0}
   .mz-pd__figs,.mz-pd__thumbs{display:none}
+  .mz-pd__more{padding:16px 16px 0;grid-template-columns:repeat(2,minmax(0,1fr))}
   .mz-pd__stage{display:block;position:relative;height:520px;overflow:hidden;transition:background-color .9s}
   .mz-pd__layer{position:absolute;top:6%;left:7%;width:86%;height:88%;object-fit:contain}
   .mz-pd__formlayer{position:absolute;left:50%;bottom:26px;width:220px;height:470px;margin-left:-110px;perspective:1200px}

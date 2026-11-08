@@ -11,7 +11,9 @@
     "check": "npm run typecheck && npm test && node scripts/icons.mjs --check",
     "seed:supabase": "node --env-file=.env.local --import tsx scripts/seed-supabase.ts",
     "icons": "node scripts/icons.mjs",
-    "postinstall": "node scripts/copy-mediapipe.mjs"
+    "postinstall": "node scripts/copy-mediapipe.mjs",
+    "seed:demo": "node --import tsx scripts/seed-demo.ts",
+    "dev:demo": "node scripts/dev-demo.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

@@ -1,0 +1,50 @@
+/* Invoice / packing slip: plain, printable, in the shop's colours. Scoped under .inv. */
+html:has(.inv),body:has(.inv){margin:0;background:#EFE9E1}
+.inv{font-family:'Vazirmatn',Tahoma,system-ui,sans-serif;color:#2A1D1F;padding:24px 16px;font-size:14px;line-height:1.6}
+.inv[lang=en]{font-family:'Jost','Vazirmatn','Helvetica Neue',Arial,sans-serif}
+.inv-contact{font-size:12px;color:#6F5F5C}
+.inv-bar{max-width:794px;margin:0 auto 12px;display:flex;justify-content:flex-end}
+.inv-bar button{font:inherit;font-family:'Vazirmatn',Tahoma,sans-serif;height:44px;padding:0 20px;border-radius:999px;border:0;background:#6E2A31;color:#fff;cursor:pointer}
+.inv-bar button:focus-visible{outline:2px solid #8E3A42;outline-offset:2px}
+.inv-page{max-width:794px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 2px 12px rgba(42,29,31,.08);display:flex;flex-direction:column;gap:28px}
+.inv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding-block-end:20px;border-block-end:2px solid #B8926A}
+.inv-head > div{display:flex;flex-direction:column;gap:2px}
+.inv-brand{font-family:'Bodoni Moda',Didot,Georgia,serif;font-weight:500;font-size:24px;letter-spacing:.14em;color:#6E2A31;direction:ltr;unicode-bidi:isolate}
+.inv-meta{text-align:end}
+.inv-meta h1{margin:0;font-size:24px}
+.inv-to{display:flex;flex-direction:column;gap:2px}
+.inv-to h2,.inv-items th{font-size:12px;font-weight:600;color:#6F5F5C;margin:0}
+.inv-to b{font-size:16px}
+.inv-items{width:100%;border-collapse:collapse}
+.inv-items th{text-align:start;padding:8px;border-block-end:1px solid #EADFD5}
+.inv-items td{padding:10px 8px;border-block-end:1px solid #F1EAE2;vertical-align:top}
+.inv-items td:nth-child(n+3),.inv-items th:nth-child(n+3){text-align:end;white-space:nowrap}
+.inv-items small{color:#6F5F5C}
+.inv-sum{display:grid;grid-template-columns:1fr auto;gap:6px 24px;margin:0;margin-inline-start:auto;min-width:260px}
+.inv-sum dt{color:#6F5F5C}
+.inv-sum dd{margin:0;text-align:end;font-variant-numeric:tabular-nums}
+.inv-sum .big{font-size:18px;font-weight:700;color:#2A1D1F;padding-block-start:8px;border-block-start:1px dashed #EADFD5}
+.inv-sum .due{color:#A12C24;font-weight:600}
+.inv-foot{text-align:center;color:#6F5F5C;font-size:12px}
+@media (max-width:600px){
+  .inv{padding:12px}
+  .inv-page{padding:20px;border-radius:12px}
+  .inv-items thead{display:none}
+  .inv-items tr{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-block-end:1px solid #F1EAE2}
+  .inv-items td{border:0;padding:0}
+  .inv-items td:first-child{grid-column:1/-1;font-weight:600}
+  .inv-items td:nth-child(n+3){text-align:start}
+  .inv-items td:nth-child(4){display:none}
+  .inv-items td.inv-qty::before{content:'× '}
+  .inv-head{flex-direction:column}
+  .inv-meta{text-align:start}
+  .inv-items td:nth-child(5){text-align:end}
+  .inv-sum{min-width:0;width:100%}
+}
+@media print{
+  html:has(.inv),body:has(.inv){background:#fff}
+  .inv{padding:0}
+  .inv-bar{display:none}
+  .inv-page{box-shadow:none;border-radius:0;padding:0;max-width:none}
+  @page{size:A4;margin:16mm}
+}

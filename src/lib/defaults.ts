@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   prepDays: 1,
   shipDays: 2,
   bufferDays: 2,
+  monthlyGoal: 0,
   home: { hero: '', fabric: '', atelier: '', tryBefore: '', tryAfter: '', featuredId: null },
 };
 
@@ -179,6 +180,7 @@ export const SEED_GARMENTS: Garment[] = SPECS.map((s, i) => ({
   detail: '',
   wornFront: SEED_PHOTOS.has(s.id) ? `/images/worn/${s.id}-front.webp` : '',
   wornBack: SEED_PHOTOS.has(s.id) ? `/images/worn/${s.id}-back.webp` : '',
+  images: [],
   chart: null,
   leadDays: 0,
   isNew: !!s.isNew,

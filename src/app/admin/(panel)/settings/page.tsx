@@ -1,7 +1,9 @@
-import { SettingsForm } from '@/components/admin/SettingsForm';
-import { db } from '@/lib/db';
+import { garmentsOnce, adminSettingsOnce } from '@/lib/admin-data';
+import { SettingsPage } from '@/components/admin/settings/SettingsPage';
 
-export default async function SettingsPage() {
-  const [settings, garments] = await Promise.all([db().getSettings(), db().listGarments()]);
-  return <SettingsForm initial={settings} garments={garments} />;
+export const metadata = { title: 'تنظیمات سایت' };
+
+export default async function Settings() {
+  const [settings, garments] = await Promise.all([adminSettingsOnce(), garmentsOnce()]);
+  return <SettingsPage initial={settings} garments={garments} />;
 }

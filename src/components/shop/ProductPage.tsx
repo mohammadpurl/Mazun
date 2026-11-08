@@ -85,6 +85,7 @@ function Product({ g }: { g: Garment }) {
   const bg = cardBg(colour?.hex);
   const more = b.garments.filter(x => x.id !== g.id).slice(0, 4);
   const soldOut = !g.sizes.some(s => s.ok);
+  const extra = [g.detail, ...(g.images ?? [])].filter(Boolean);
   const openGuide = () => { if (g.chart) b.openSize({ garmentId: g.id, onUse: s => { setSize(s); setNeed(false); } }); else setGuide(true); };
 
   const add = () => {
@@ -145,6 +146,14 @@ function Product({ g }: { g: Garment }) {
                 </button>
               ))}
             </div>
+            {/* Fabric close-up and the gallery photos added in the admin panel. */}
+            {extra.length > 0 && (
+              <ul className="mz-pd__more" aria-label={c.morePhotos}>
+                {extra.map((src, i) => (
+                  <motion.li key={src} {...rise(i + 2)}><img src={src} alt={`${name} — ${c.morePhotos} ${i + 1}`} loading="lazy" /></motion.li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="mz-pd__info">

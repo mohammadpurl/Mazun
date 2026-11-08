@@ -2,27 +2,47 @@
    hosts do not keep files, and there is no locking across processes. */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { customersFromOrders, linkCustomer, newId, withOneDefault } from '../customers';
 import { DEFAULT_SETTINGS, SEED_CATEGORIES, SEED_GARMENTS, withDefaults } from '../defaults';
-import type { Category, Garment, Order, Settings } from '../types';
-import { bySort, type Repo } from './repo';
+import { applyOrderPatch, completeOrder, upgradeOrder } from '../orders';
+import type { Category, Customer, CustomerInput, Garment, Order, Settings } from '../types';
+import { bySort, ConflictError, newestFirst, type Repo } from './repo';
 
 interface Data {
   categories: Category[];
   garments: Garment[];
   orders: Order[];
+  /** Missing in stores written before customer records existed; rebuilt from the orders on first read. */
+  customers?: Customer[];
   settings: Settings;
   nextOrderId: number;
 }
+type Full = Data & { customers: Customer[] };
 
-const seed = (): Data => ({
+const seed = (): Full => ({
   categories: structuredClone(SEED_CATEGORIES),
   garments: structuredClone(SEED_GARMENTS),
   orders: [],
+  customers: [],
   settings: structuredClone(DEFAULT_SETTINGS),
   nextOrderId: 1001,
 });
 
-const newId = (p: string) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+/** Brings an older store up to date: gallery lists, order payment/shipping/history, and customer records. */
+function upgrade(d: Data): Full {
+  d.settings = withDefaults(d.settings);
+  d.garments = d.garments.map(g => ({ ...g, images: Array.isArray(g.images) ? g.images : [] }));
+  d.orders = d.orders.map(upgradeOrder);
+  if (!Array.isArray(d.customers)) {
+    // Ids from the phone number, so they stay the same on every read until the store is next written.
+    d.customers = customersFromOrders(d.orders, phone => 'u' + phone);
+    const byPhone = new Map(d.customers.map(c => [c.phone, c.id]));
+    d.orders.forEach(o => { o.customerId ??= byPhone.get(o.phone) ?? null; });
+  }
+  return d as Full;
+}
+
+const cleanCustomer = (input: CustomerInput) => ({ ...input, addresses: withOneDefault(input.addresses) });
 
 export class LocalRepo implements Repo {
   readonly kind = 'local' as const;
@@ -34,11 +54,9 @@ export class LocalRepo implements Repo {
   private get file() { return path.join(this.dir, 'store.json'); }
   get uploadsDir() { return path.join(this.dir, 'uploads'); }
 
-  private async read(): Promise<Data> {
+  private async read(): Promise<Full> {
     try {
-      const d = JSON.parse(await fs.readFile(this.file, 'utf8')) as Data;
-      d.settings = withDefaults(d.settings);
-      return d;
+      return upgrade(JSON.parse(await fs.readFile(this.file, 'utf8')) as Data);
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
       return seed();
@@ -46,7 +64,7 @@ export class LocalRepo implements Repo {
   }
 
   /** Serialises writes in this process so two requests cannot overwrite each other's changes. */
-  private write<T>(fn: (d: Data) => T): Promise<T> {
+  private write<T>(fn: (d: Full) => T): Promise<T> {
     const run = this.queue.then(async () => {
       const d = await this.read();
       const out = fn(d);
@@ -59,6 +77,9 @@ export class LocalRepo implements Repo {
     this.queue = run.catch(() => undefined);
     return run;
   }
+
+  /** Replaces the whole store (the demo-data script). */
+  replaceAll(d: Full) { return this.write(cur => { Object.assign(cur, d); }); }
 
   async listCategories() { return (await this.read()).categories.sort(bySort); }
   createCategory(input: Parameters<Repo['createCategory']>[0]) {
@@ -109,20 +130,61 @@ export class LocalRepo implements Repo {
   }
 
   async listOrders() { return (await this.read()).orders.sort((a, b) => b.id - a.id); }
+  async getOrder(id: number) { return (await this.read()).orders.find(o => o.id === id) ?? null; }
   createOrder(order: Parameters<Repo['createOrder']>[0]) {
     return this.write(d => {
       const now = new Date().toISOString();
-      const o: Order = { ...order, id: d.nextOrderId++, status: 'new', adminNote: '', createdAt: now, updatedAt: now };
+      const chosen = order.customerId ? d.customers.find(c => c.id === order.customerId) : undefined;
+      const { customer, created, changed } = linkCustomer(chosen ? [chosen] : d.customers, chosen ? { ...order, phone: chosen.phone } : order, now);
+      if (created) d.customers.push(customer);
+      else if (changed) d.customers = d.customers.map(c => (c.id === customer.id ? customer : c));
+      const o = completeOrder({ ...order, customerId: customer.id }, d.nextOrderId++, now);
       d.orders.push(o);
       return o;
     });
   }
+  linkCustomer(o: Parameters<Repo['linkCustomer']>[0]) {
+    return this.write(d => {
+      const chosen = o.customerId ? d.customers.find(c => c.id === o.customerId) : undefined;
+      const { customer, created, changed } = linkCustomer(chosen ? [chosen] : d.customers, chosen ? { ...o, phone: chosen.phone } : o, new Date().toISOString());
+      if (created) d.customers.push(customer);
+      else if (changed) d.customers = d.customers.map(c => (c.id === customer.id ? customer : c));
+      return customer.id;
+    });
+  }
   updateOrder(id: number, patch: Parameters<Repo['updateOrder']>[1]) {
     return this.write(d => {
-      const o = d.orders.find(x => x.id === id);
-      if (!o) return null;
-      Object.assign(o, patch, { updatedAt: new Date().toISOString() });
-      return o;
+      const i = d.orders.findIndex(x => x.id === id);
+      if (i < 0) return null;
+      d.orders[i] = applyOrderPatch(d.orders[i], patch, new Date().toISOString());
+      return d.orders[i];
+    });
+  }
+
+  async listCustomers() { return (await this.read()).customers.sort(newestFirst); }
+  async getCustomer(id: string) { return (await this.read()).customers.find(c => c.id === id) ?? null; }
+  createCustomer(input: CustomerInput) {
+    return this.write(d => {
+      if (d.customers.some(c => c.phone === input.phone)) throw new ConflictError('phone', 'مشتری دیگری با این شماره ثبت شده است');
+      const now = new Date().toISOString();
+      const c: Customer = { ...cleanCustomer(input), id: newId('u'), createdAt: now, updatedAt: now };
+      d.customers.push(c);
+      return c;
+    });
+  }
+  updateCustomer(id: string, input: CustomerInput) {
+    return this.write(d => {
+      const i = d.customers.findIndex(c => c.id === id);
+      if (i < 0) return null;
+      if (d.customers.some(c => c.id !== id && c.phone === input.phone)) throw new ConflictError('phone', 'مشتری دیگری با این شماره ثبت شده است');
+      d.customers[i] = { ...d.customers[i], ...cleanCustomer(input), updatedAt: new Date().toISOString() };
+      return d.customers[i];
+    });
+  }
+  async deleteCustomer(id: string) {
+    await this.write(d => {
+      d.customers = d.customers.filter(c => c.id !== id);
+      d.orders.forEach(o => { if (o.customerId === id) o.customerId = null; });
     });
   }
 

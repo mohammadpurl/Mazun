@@ -50,7 +50,9 @@ test('withWorn: refuses to drop worn photos when the columns are missing, saves 
   await assert.rejects(f.repo.updateGarment('zayna', input()), /schema\.sql/);
   await f.repo.updateGarment('zayna', { ...input(), wornFront: '' });
   assert.equal('worn_front' in f.writes[0], false);
-  assert.equal(f.probes(), 1, 'a missing column is remembered');
+  await f.repo.updateGarment('zayna', { ...input(), wornFront: '' });
+  // One probe for the worn columns and one for the gallery column, each asked once.
+  assert.equal(f.probes(), 2, 'a missing column is remembered');
 });
 
 test('withWorn: a passing error is asked again instead of being remembered', async () => {
@@ -58,6 +60,7 @@ test('withWorn: a passing error is asked again instead of being remembered', asy
   const f = fakeRepo(() => (n++ === 0 ? { error: { code: '500', message: 'timeout' } } : { error: null }));
   await f.repo.updateGarment('zayna', input());
   await f.repo.updateGarment('zayna', input());
-  assert.equal(f.probes(), 2);
+  // worn (timeout, not remembered), gallery (found), then worn again.
+  assert.equal(f.probes(), 3);
   assert.equal(f.writes[1].worn_front, '/images/worn/a.webp');
 });

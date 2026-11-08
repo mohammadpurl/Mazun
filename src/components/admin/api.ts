@@ -31,9 +31,3 @@ export async function uploadImage(file: File, max = 1200): Promise<string> {
   if (!r.ok) throw new Error(data.errors?.file || data.error || 'بارگذاری تصویر انجام نشد');
   return data.url as string;
 }
-
-export const faNum = (n: number) => n.toLocaleString('fa-IR', { maximumFractionDigits: 3 });
-export const faDate = (iso: string, withTime = true) =>
-  new Date(iso).toLocaleString('fa-IR', withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' });
-/** Order numbers without thousands separators (#۱۰۰۱, not #۱,۰۰۱). */
-export const faId = (n: number) => n.toLocaleString('fa-IR', { useGrouping: false });

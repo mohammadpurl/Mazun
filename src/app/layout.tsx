@@ -9,7 +9,8 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, view
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const lang = await requestLang();
   return (
-    <html lang={lang} dir={lang === 'en' ? 'ltr' : 'rtl'}>
+    // The admin panel sets its saved theme and sidebar state on <html> before hydration (app/admin/layout.tsx).
+    <html lang={lang} dir={lang === 'en' ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head>
         <FontLinks />
       </head>

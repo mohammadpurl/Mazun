@@ -1,12 +1,17 @@
 import Link from 'next/link';
+import { AIcon } from '@/components/admin/ui/Icon';
 
 export default function AdminNotFound() {
   return (
-    <div className="stack">
-      <div className="top"><h1>این صفحه پیدا نشد</h1></div>
-      <div className="card stack">
-        <p className="muted" style={{ margin: 0 }}>نشانی اشتباه است یا این صفحه دیگر وجود ندارد.</p>
-        <div><Link href="/admin" className="btn">بازگشت به داشبورد</Link></div>
+    <div className="card">
+      <div className="empty">
+        <span className="art"><AIcon name="search" duo /></span>
+        <b>این صفحه پیدا نشد</b>
+        <span>نشانی اشتباه است یا این مورد دیگر وجود ندارد.</span>
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <Link href="/admin" className="btn"><AIcon name="dashboard" />بازگشت به داشبورد</Link>
+          <Link href="/admin/orders" className="btn outline">سفارش‌ها</Link>
+        </div>
       </div>
     </div>
   );

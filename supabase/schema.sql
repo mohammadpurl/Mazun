@@ -47,6 +47,8 @@ create table if not exists public.garments (
 -- Upgrades a table created before the worn photos existed.
 alter table public.garments add column if not exists worn_front text not null default '';
 alter table public.garments add column if not exists worn_back  text not null default '';
+-- Gallery photos beyond front/back/detail, in display order: ["https://…", …]
+alter table public.garments add column if not exists images jsonb not null default '[]'::jsonb;
 
 create index if not exists garments_kind_idx on public.garments (kind);
 
@@ -68,6 +70,63 @@ create table if not exists public.orders (
   updated_at    timestamptz not null default now()
 );
 create index if not exists orders_status_idx on public.orders (status);
+
+-- Customers: one per phone number (digits with country code). Addresses and staff notes are small lists kept on the
+-- customer: [{"id","label","city","area","line","isDefault"}] and [{"id","at","text"}].
+create table if not exists public.customers (
+  id         text primary key default gen_random_uuid()::text,
+  name       text  not null default '',
+  phone      text  not null unique,
+  email      text  not null default '',
+  tags       jsonb not null default '[]'::jsonb,
+  addresses  jsonb not null default '[]'::jsonb,
+  notes      jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists customers_created_idx on public.customers (created_at desc);
+
+-- Order follow-up added with the customer records: who ordered, money received, delivery, and the status history.
+alter table public.orders add column if not exists customer_id text references public.customers(id) on delete set null;
+alter table public.orders add column if not exists payment  jsonb not null default '{"status":"unpaid","method":"","paid":0,"paidAt":null}'::jsonb;
+alter table public.orders add column if not exists shipping jsonb not null default '{"carrier":"","tracking":"","fee":0,"shippedAt":null,"deliveredAt":null}'::jsonb;
+alter table public.orders add column if not exists history  jsonb not null default '[]'::jsonb;
+create index if not exists orders_customer_idx on public.orders (customer_id);
+
+-- One-time upgrade of orders placed before customer records and order follow-up existed. It runs only while no order
+-- has a history yet, so running this file again later changes nothing (and never brings back a deleted customer).
+do $$
+begin
+  if exists (select 1 from public.orders where history <> '[]'::jsonb) then return; end if;
+
+  -- Omani numbers saved without the country code get it, so one customer is one record.
+  update public.orders set phone = '968' || phone where phone ~ '^[279][0-9]{7}$';
+
+  -- A customer for every phone, named as on her latest order, with that order's address.
+  insert into public.customers (name, phone, addresses, created_at, updated_at)
+  select distinct on (o.phone) o.customer_name, o.phone,
+         case when o.city <> '' or o.address <> '' then jsonb_build_array(jsonb_build_object(
+           'id', 'a' || substr(md5(o.phone), 1, 10), 'label', 'خانه', 'city', o.city, 'area', '', 'line', o.address, 'isDefault', true))
+         else '[]'::jsonb end,
+         min(o.created_at) over (partition by o.phone), max(o.created_at) over (partition by o.phone)
+  from public.orders o
+  where o.phone <> ''
+  order by o.phone, o.created_at desc
+  on conflict (phone) do nothing;
+  update public.orders o set customer_id = c.id from public.customers c where o.customer_id is null and c.phone = o.phone;
+
+  -- Orders delivered before payments were tracked are taken as settled (otherwise day one would show long-paid
+  -- orders as debts); the history says it is an assumption. Orders still on the way keep their balance, so the
+  -- delivery step asks whether it was collected. Both are dated by their last change.
+  update public.orders set
+    payment = jsonb_build_object('status', 'paid', 'method', '', 'paid', total, 'paidAt', updated_at),
+    shipping = shipping || jsonb_build_object('shippedAt', updated_at, 'deliveredAt', updated_at)
+  where status = 'delivered';
+  update public.orders set shipping = shipping || jsonb_build_object('shippedAt', updated_at) where status = 'shipped';
+
+  update public.orders set history = jsonb_build_array(jsonb_build_object('at', created_at, 'status', status, 'note',
+    case when status = 'delivered' then 'پیش از راه‌اندازی پیگیری پرداخت؛ تسویه فرض شد' else '' end));
+end $$;
 create index if not exists orders_created_idx on public.orders (created_at desc);
 
 create table if not exists public.settings (
@@ -80,6 +139,7 @@ alter table public.categories enable row level security;
 alter table public.garments   enable row level security;
 alter table public.orders     enable row level security;
 alter table public.settings   enable row level security;
+alter table public.customers  enable row level security;
 
 -- Public image bucket: anyone may view images; only the server (service role) uploads.
 insert into storage.buckets (id, name, public) values ('garments', 'garments', true)
