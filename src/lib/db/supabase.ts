@@ -2,9 +2,11 @@
    on with no policies, so the browser (anon key) cannot read or write anything directly.
    Schema: supabase/schema.sql. Translated fields ({en, ar, fa}) are jsonb columns. */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { linkCustomer, withOneDefault } from '../customers';
 import { DEFAULT_SETTINGS, SEED_CATEGORIES, SEED_GARMENTS, withDefaults } from '../defaults';
-import type { Category, CategoryInput, Garment, GarmentInput, L10n, NewOrder, Order, OrderPatch, Settings } from '../types';
-import type { Repo } from './repo';
+import { applyOrderPatch, completeOrder, upgradeOrder } from '../orders';
+import type { Category, CategoryInput, Customer, CustomerInput, Garment, GarmentInput, L10n, NewOrder, Order, OrderPatch, Settings } from '../types';
+import { ConflictError, type Repo } from './repo';
 
 type Row = Record<string, unknown>;
 const BUCKET = 'garments';
@@ -26,6 +28,8 @@ const toGarment = (r: Row): Garment => ({
   colors: Array.isArray(r.colors) ? (r.colors as Garment['colors']) : [],
   sizes: Array.isArray(r.sizes) ? (r.sizes as Garment['sizes']) : [],
   shape: (r.shape as Garment['shape']) ?? 'abaya', front: String(r.front ?? ''), back: String(r.back ?? ''), detail: String(r.detail ?? ''),
+  wornFront: String(r.worn_front ?? ''), wornBack: String(r.worn_back ?? ''),
+  images: Array.isArray(r.images) ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string') : [],
   chart: (r.chart as Garment['chart']) ?? null, leadDays: Number(r.lead_days ?? 0), isNew: r.is_new === true,
   sort: Number(r.sort ?? 0), visible: r.visible !== false, createdAt: String(r.created_at ?? ''),
 });
@@ -36,13 +40,30 @@ const fromGarment = (g: GarmentInput) => ({
   ...(g.sort != null && { sort: g.sort }),
 });
 
-const toOrder = (r: Row): Order => ({
-  id: Number(r.id), items: Array.isArray(r.items) ? (r.items as Order['items']) : [], total: Number(r.total ?? 0),
+const toOrder = (r: Row): Order => upgradeOrder({
+  id: Number(r.id), customerId: r.customer_id == null ? null : String(r.customer_id),
+  items: Array.isArray(r.items) ? (r.items as Order['items']) : [], total: Number(r.total ?? 0),
   customerName: String(r.customer_name ?? ''), phone: String(r.phone ?? ''), city: String(r.city ?? ''),
   address: String(r.address ?? ''), note: String(r.note ?? ''), eventDate: (r.event_date as string | null) ?? null,
   lang: (r.lang as Order['lang']) ?? 'en', status: (r.status as Order['status']) ?? 'new', adminNote: String(r.admin_note ?? ''),
+  payment: r.payment as Order['payment'], shipping: r.shipping as Order['shipping'], history: r.history as Order['history'],
   createdAt: String(r.created_at ?? ''), updatedAt: String(r.updated_at ?? ''),
 });
+const fromOrderState = (o: Order) => ({
+  status: o.status, admin_note: o.adminNote, payment: o.payment, shipping: o.shipping, history: o.history, updated_at: o.updatedAt,
+});
+
+const toCustomer = (r: Row): Customer => ({
+  id: String(r.id), name: String(r.name ?? ''), phone: String(r.phone ?? ''), email: String(r.email ?? ''),
+  tags: Array.isArray(r.tags) ? (r.tags as string[]) : [], addresses: Array.isArray(r.addresses) ? (r.addresses as Customer['addresses']) : [],
+  notes: Array.isArray(r.notes) ? (r.notes as Customer['notes']) : [], createdAt: String(r.created_at ?? ''), updatedAt: String(r.updated_at ?? ''),
+});
+const fromCustomer = (c: CustomerInput) => ({
+  name: c.name, phone: c.phone, email: c.email, tags: c.tags, addresses: withOneDefault(c.addresses), notes: c.notes,
+});
+/** Postgres "unique violation": another customer has this phone. */
+const isDuplicate = (e: { code?: string } | null) => e?.code === '23505';
+const UPGRADE = 'پایگاه داده به‌روز نیست: فایل supabase/schema.sql را یک بار دیگر در SQL Editor اجرا کنید';
 
 type Q = PromiseLike<{ data: unknown; error: { message: string } | null }>;
 
@@ -92,30 +113,140 @@ export class SupabaseRepo implements Repo {
 
   listGarments() { return this.rows(this.sb.from('garments').select('*').order('sort').order('id'), toGarment); }
   getGarment(id: string) { return this.one(this.sb.from('garments').select('*').eq('id', id).maybeSingle(), toGarment); }
+  /** The worn-photo columns came later (supabase/schema.sql); a database without them still saves everything else. */
+  private wornCols?: Promise<boolean>;
+  private async withWorn(g: GarmentInput) {
+    // Only "no such column" is remembered; a network blip is asked again next time rather than dropping photos.
+    this.wornCols ??= Promise.resolve(this.sb.from('garments').select('worn_front').limit(1)).then(r => {
+      if (!r.error) return true;
+      if (r.error.code === '42703' || r.error.code === 'PGRST204') return false;
+      this.wornCols = undefined;
+      return true;
+    });
+    const row: Row = fromGarment(g);
+    if (await this.wornCols) Object.assign(row, { worn_front: g.wornFront ?? '', worn_back: g.wornBack ?? '' });
+    else if (g.wornFront || g.wornBack) throw new Error('worn_front/worn_back columns are missing — run supabase/schema.sql');
+    if (await this.has('garments', 'images')) row.images = g.images ?? [];
+    else if (g.images?.length) throw new Error(UPGRADE);
+    return row;
+  }
   async createGarment(input: GarmentInput) {
     const sort = input.sort ?? await this.nextSort('garments');
-    return (await this.one(this.sb.from('garments').insert({ ...fromGarment(input), sort }).select().single(), toGarment))!;
+    return (await this.one(this.sb.from('garments').insert({ ...(await this.withWorn(input)), sort }).select().single(), toGarment))!;
   }
-  updateGarment(id: string, input: GarmentInput) {
-    return this.one(this.sb.from('garments').update(fromGarment(input)).eq('id', id).select().maybeSingle(), toGarment);
+  async updateGarment(id: string, input: GarmentInput) {
+    return this.one(this.sb.from('garments').update(await this.withWorn(input)).eq('id', id).select().maybeSingle(), toGarment);
   }
   deleteGarment(id: string) { return this.check(this.sb.from('garments').delete().eq('id', id)); }
   reorderGarments(ids: string[]) { return this.reorder('garments', ids); }
 
-  listOrders() { return this.rows(this.sb.from('orders').select('*').order('id', { ascending: false }).limit(5000), toOrder); }
+  /** Columns and tables added after the first release (supabase/schema.sql). A database without them keeps working
+   *  for what it has. "Present" is remembered for good; "missing" for a minute only, so running schema.sql takes
+   *  effect without a restart; a network blip is not remembered at all. */
+  private probes = new Map<string, { p: Promise<boolean> }>();
+  private has(table: string, column = 'id') {
+    const k = table + '.' + column;
+    const hit = this.probes.get(k);
+    if (hit) return hit.p;
+    const p = Promise.resolve(this.sb.from(table).select(column).limit(1)).then(r => {
+      if (!r.error) return true;
+      if (['42703', 'PGRST204', '42P01', 'PGRST205'].includes(r.error.code)) { setTimeout(() => this.probes.delete(k), 60_000); return false; }
+      this.probes.delete(k);
+      return true;
+    });
+    this.probes.set(k, { p });
+    return p;
+  }
+
+  /** Every row of a query, a page at a time: the project's "max rows" setting (1000 by default) caps a single read. */
+  private async all<T>(make: (from: number, to: number) => Q, map: (r: Row) => T, page = 1000): Promise<T[]> {
+    const out: T[] = [];
+    for (let from = 0; ; from += page) {
+      const { data, error } = await make(from, from + page - 1);
+      if (error) throw new Error(error.message);
+      const rows = (data as Row[]) ?? [];
+      out.push(...rows.map(map));
+      if (rows.length < page) return out;
+    }
+  }
+
+  listOrders() { return this.all((a, b) => this.sb.from('orders').select('*').order('id', { ascending: false }).range(a, b), toOrder); }
+  getOrder(id: number) { return this.one(this.sb.from('orders').select('*').eq('id', id).maybeSingle(), toOrder); }
   async createOrder(o: NewOrder) {
-    const row = {
+    const row: Row = {
       items: o.items, total: o.total, customer_name: o.customerName, phone: o.phone, city: o.city, address: o.address,
       note: o.note, event_date: o.eventDate, lang: o.lang,
     };
+    if (await this.has('orders', 'payment')) {
+      // Linking to a customer must never stop an order from being saved.
+      const customerId = await this.linkCustomer(o).catch(e => { console.error('order saved without customer link:', e); return null; });
+      const done = completeOrder({ ...o, customerId }, 0, new Date().toISOString());
+      Object.assign(row, { customer_id: customerId, ...fromOrderState(done) });
+      delete row.updated_at;
+    }
     return (await this.one(this.sb.from('orders').insert(row).select().single(), toOrder))!;
   }
-  updateOrder(id: number, patch: OrderPatch) {
-    const row: Row = { updated_at: new Date().toISOString() };
-    if (patch.status) row.status = patch.status;
-    if (patch.adminNote !== undefined) row.admin_note = patch.adminNote;
-    return this.one(this.sb.from('orders').update(row).eq('id', id).select().maybeSingle(), toOrder);
+  /** Finds or creates the order's customer and saves a new delivery address; returns her id. */
+  async linkCustomer(o: Pick<NewOrder, 'customerId' | 'customerName' | 'phone' | 'city' | 'address'>): Promise<string | null> {
+    if (!(await this.has('customers'))) return null;
+    const now = new Date().toISOString();
+    const q = o.customerId ? this.sb.from('customers').select('*').eq('id', o.customerId) : this.sb.from('customers').select('*').eq('phone', o.phone);
+    const found = await this.rows(q.limit(1), toCustomer);
+    const { customer, created, changed } = linkCustomer(found, found[0] ? { ...o, phone: found[0].phone } : o, now);
+    if (created) {
+      const ins = await this.sb.from('customers').insert(fromCustomer(customer)).select('id').single();
+      if (isDuplicate(ins.error)) return (await this.rows(this.sb.from('customers').select('*').eq('phone', o.phone).limit(1), toCustomer))[0]?.id ?? null;
+      if (ins.error) throw new Error(ins.error.message);
+      return String((ins.data as Row).id);
+    }
+    if (changed) await this.check(this.sb.from('customers').update({ name: customer.name, addresses: customer.addresses, updated_at: now }).eq('id', customer.id));
+    return customer.id;
   }
+  /** Read, change, write back only if nobody else wrote in between (same updated_at); otherwise read again and redo
+   *  the change, so two people saving the same order never drop each other's history or payment. */
+  async updateOrder(id: number, patch: OrderPatch) {
+    const v2 = await this.has('orders', 'payment');
+    if (!v2 && (patch.payment || patch.shipping || patch.edit)) throw new Error(UPGRADE);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const cur = await this.getOrder(id);
+      if (!cur) return null;
+      const next = applyOrderPatch(cur, patch, new Date().toISOString());
+      const row: Row = v2 ? fromOrderState(next) : { status: next.status, admin_note: next.adminNote, updated_at: next.updatedAt };
+      if (v2 && patch.edit) Object.assign(row, {
+        items: next.items, total: next.total, customer_name: next.customerName, phone: next.phone, city: next.city, address: next.address,
+        event_date: next.eventDate, note: next.note, customer_id: next.customerId, lang: next.lang,
+      });
+      const saved = await this.one(this.sb.from('orders').update(row).eq('id', id).eq('updated_at', cur.updatedAt).select().maybeSingle(), toOrder);
+      if (saved) return saved;
+    }
+    throw new Error('سفارش هم‌زمان در جای دیگری تغییر کرد؛ صفحه را تازه کنید و دوباره امتحان کنید');
+  }
+
+  private async needCustomers() { if (!(await this.has('customers'))) throw new Error(UPGRADE); }
+  async listCustomers() {
+    await this.needCustomers();
+    return this.all((a, b) => this.sb.from('customers').select('*').order('created_at', { ascending: false }).order('id').range(a, b), toCustomer);
+  }
+  async getCustomer(id: string) {
+    await this.needCustomers();
+    return this.one(this.sb.from('customers').select('*').eq('id', id).maybeSingle(), toCustomer);
+  }
+  async createCustomer(input: CustomerInput) {
+    await this.needCustomers();
+    const { data, error } = await this.sb.from('customers').insert(fromCustomer(input)).select().single();
+    if (isDuplicate(error)) throw new ConflictError('phone', 'مشتری دیگری با این شماره ثبت شده است');
+    if (error) throw new Error(error.message);
+    return toCustomer(data as Row);
+  }
+  async updateCustomer(id: string, input: CustomerInput) {
+    await this.needCustomers();
+    const { data, error } = await this.sb.from('customers').update({ ...fromCustomer(input), updated_at: new Date().toISOString() }).eq('id', id).select().maybeSingle();
+    if (isDuplicate(error)) throw new ConflictError('phone', 'مشتری دیگری با این شماره ثبت شده است');
+    if (error) throw new Error(error.message);
+    return data ? toCustomer(data as Row) : null;
+  }
+  // orders.customer_id is "on delete set null".
+  async deleteCustomer(id: string) { await this.needCustomers(); await this.check(this.sb.from('customers').delete().eq('id', id)); }
 
   async getSettings() {
     const { data, error } = await this.sb.from('settings').select('data').eq('id', 1).maybeSingle();
@@ -136,10 +267,16 @@ export class SupabaseRepo implements Repo {
   /** Problems that would break the shop: missing tables (schema.sql not run) or a missing / private image bucket. */
   async healthCheck(): Promise<string[]> {
     const problems: string[] = [];
-    for (const t of ['categories', 'garments', 'orders', 'settings']) {
+    for (const t of ['categories', 'garments', 'orders', 'settings', 'customers']) {
       // A real (1-row) read: head-only requests do not report a missing table.
       const { error } = await this.sb.from(t).select('*').limit(1);
       if (error) problems.push(`table "${t}": ${error.message} — run supabase/schema.sql in the SQL Editor`);
+    }
+    const worn = await this.sb.from('garments').select('worn_front, worn_back').limit(1);
+    if (worn.error) problems.push(`garments.worn_front/worn_back: ${worn.error.message} — run supabase/schema.sql`);
+    for (const [t, cols] of [['garments', 'images'], ['orders', 'customer_id, payment, shipping, history']] as const) {
+      const r = await this.sb.from(t).select(cols).limit(1);
+      if (r.error) problems.push(`${t}.${cols}: ${r.error.message} — run supabase/schema.sql`);
     }
     const { data, error } = await this.sb.storage.getBucket(BUCKET);
     if (error || !data) problems.push(`storage bucket "${BUCKET}" not found — run supabase/schema.sql`);
@@ -156,7 +293,7 @@ export class SupabaseRepo implements Repo {
       done.push(`${SEED_CATEGORIES.length} collections`);
     }
     if (!(await count('garments'))) {
-      await this.check(this.sb.from('garments').insert(SEED_GARMENTS.map(g => ({ id: g.id, ...fromGarment(g), sort: g.sort }))));
+      await this.check(this.sb.from('garments').insert(await Promise.all(SEED_GARMENTS.map(async g => ({ id: g.id, ...(await this.withWorn(g)), sort: g.sort })))));
       done.push(`${SEED_GARMENTS.length} products`);
     }
     const { data } = await this.sb.from('settings').select('id').eq('id', 1).maybeSingle();

@@ -1,14 +1,16 @@
 'use client';
 /* Shared shop state: language, catalogue, bag and wishlist (kept in this browser), and which drawer is open.
    Every boutique screen reads it through useBoutique(). */
+import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { effectivePrice } from '@/lib/fit';
 import { formatPrice } from '@/lib/order-message';
 import { LANGS, type Category, type Garment, type L10n, type Lang, type Settings } from '@/lib/types';
+import { trapTab } from '../shop/focus';
 import { STRINGS, type Strings } from './i18n';
 
 export interface BagLine { id: string; c: number; s: string; q: number }
-export interface AiFlags { text: boolean; image: boolean }
+export interface AiFlags { text: boolean; image: boolean; /** Live AI try-on (Decart) is configured. */ live: boolean; /** The free public try-on model (Hugging Face) is allowed. */ free: boolean }
 type Sheet = 'bag' | 'wish' | null;
 interface SizeRequest { garmentId: string; onUse: (size: string) => void }
 
@@ -39,7 +41,10 @@ interface Ctx {
   sheet: Sheet;
   openSheet: (s: Sheet) => void;
   productId: string | null;
-  openProduct: (id: string | null) => void;
+  /** `list` is what the viewer steps through (the filtered rack); `size` preselects a recommended size. */
+  openProduct: (id: string | null, opts?: { list?: string[]; size?: string; leaving?: boolean }) => void;
+  viewList: string[] | null;
+  initialSize: string | null;
   sizeReq: SizeRequest | null;
   openSize: (req: SizeRequest | null) => void;
   toast: (msg: string) => void;
@@ -64,11 +69,15 @@ const isBag = (v: unknown) => Array.isArray(v) && v.every(x => x && typeof x.id 
 export function BoutiqueProvider({ initialLang, settings, categories, products, ai, children }: {
   initialLang: Lang; settings: Settings; categories: Category[]; products: Garment[]; ai: AiFlags; children: ReactNode;
 }) {
+  const router = useRouter();
   const [lang, setLangState] = useState<Lang>(initialLang);
   const [bag, setBag] = useState<BagLine[]>([]);
   const [wish, setWish] = useState<string[]>([]);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [productId, setProductId] = useState<string | null>(null);
+  const [viewList, setViewList] = useState<string[] | null>(null);
+  const [initialSize, setInitialSize] = useState<string | null>(null);
+  const pushed = useRef(false);
   const [sizeReq, setSizeReq] = useState<SizeRequest | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -83,7 +92,8 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     setBag(load<BagLine[]>('mazun_bag', [], isBag).filter(l => map.has(l.id)));
     setWish(load<string[]>('mazun_wish', [], v => Array.isArray(v) && v.every(x => typeof x === 'string')).filter(id => map.has(id)));
     const p = new URLSearchParams(location.search).get('p');
-    if (p && map.has(p)) setProductId(p);
+    if (p && map.get(p)?.kind === 'garment') router.replace(`/abaya/${encodeURIComponent(p)}`);
+    else if (p && map.has(p)) setProductId(p);
     loaded.current = true;
   }, [map]);
   useEffect(() => { if (loaded.current) save('mazun_bag', bag); }, [bag]);
@@ -99,7 +109,8 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     if (!(LANGS as readonly string[]).includes(l)) return;
     setLangState(l);
     document.cookie = `lang=${l}; path=/; max-age=31536000; samesite=lax`;
-  }, []);
+    router.refresh(); // the server renders the tab title and metadata in the new language
+  }, [router]);
 
   const toast = useCallback((msg: string) => {
     clearTimeout(toastTimer.current);
@@ -107,14 +118,32 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     toastTimer.current = setTimeout(() => setToastMsg(''), 2600);
   }, []);
 
-  // Keep ?p=<id> in the address bar so a product can be shared; no navigation, no scroll jump.
-  const openProduct = useCallback((id: string | null) => {
+  // Keep ?p=<id> in the address bar so a product can be shared; the first open adds a history entry so the
+  // phone's Back closes the viewer and returns to the rack. Stepping between pieces replaces it.
+  const openProduct = useCallback((id: string | null, opts?: { list?: string[]; size?: string; leaving?: boolean }) => {
+    // Garments have their own page; the drawer stays for accessories.
+    if (id && map.get(id)?.kind === 'garment') {
+      setInitialSize(opts?.size ?? null);
+      setSheet(null);
+      router.push(`/abaya/${encodeURIComponent(id)}`);
+      return;
+    }
+    setInitialSize(opts?.size ?? null);
+    setViewList(opts?.list ?? null);
     setProductId(id);
     try {
+      if (!id && opts?.leaving) { pushed.current = false; return; } // a page change follows; going back here would cancel it
+      if (!id && pushed.current) { pushed.current = false; history.back(); return; }
       const u = new URL(location.href);
       if (id) u.searchParams.set('p', id); else u.searchParams.delete('p');
-      history.replaceState(history.state, '', u);
+      if (id && !pushed.current && !new URLSearchParams(location.search).get('p')) { pushed.current = true; history.pushState(history.state, '', u); }
+      else history.replaceState(history.state, '', u);
     } catch { /* ignore */ }
+  }, [map, router]); // the catalogue can change under it: a language switch refreshes it from the server
+  useEffect(() => {
+    const on = () => { pushed.current = false; setProductId(new URLSearchParams(location.search).get('p')); };
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
   }, []);
 
   const value: Ctx = {
@@ -135,7 +164,7 @@ export function BoutiqueProvider({ initialLang, settings, categories, products, 
     bagCount: bag.reduce((a, l) => a + l.q, 0),
     wish,
     toggleWish: id => setWish(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id])),
-    sheet, openSheet: setSheet, productId, openProduct, sizeReq, openSize: setSizeReq,
+    sheet, openSheet: setSheet, productId, openProduct, viewList, initialSize, sizeReq, openSize: setSizeReq,
     toast, toastMsg,
   };
   return <BoutiqueCtx.Provider value={value}>{children}</BoutiqueCtx.Provider>;
@@ -154,6 +183,10 @@ export function Sheet({ open, onClose, label, width, z = 60, children }: {
   const [inView, setIn] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const back = useRef<Element | null>(null);
+  // Callers pass a new onClose each render; reading it from a ref means a re-render (a toast, a bag change) does not
+  // re-run the effect below and pull focus back to the sheet.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (open) {
@@ -172,11 +205,17 @@ export function Sheet({ open, onClose, label, width, z = 60, children }: {
     if (!mounted || !open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return; // already handled inside, e.g. Escape closing the checkout's date picker
+      const at = document.activeElement;
+      if (at && at !== document.body && !panel.current?.contains(at)) return; // focus is in another layer
+      if (e.key === 'Escape') onCloseRef.current();
+      trapTab(e, panel.current);
+    };
     document.addEventListener('keydown', onKey);
     panel.current?.focus({ preventScroll: true });
     return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
-  }, [mounted, open, onClose]);
+  }, [mounted, open]);
 
   if (!mounted) return null;
   return (
@@ -192,5 +231,9 @@ export function Sheet({ open, onClose, label, width, z = 60, children }: {
 
 export function Toast() {
   const { toastMsg } = useBoutique();
-  return <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>;
+  // The last message stays in the box while it fades out, so it never empties before it disappears.
+  const [text, setText] = useState(toastMsg);
+  if (toastMsg && toastMsg !== text) setText(toastMsg);
+  // Emptied once it has faded, so the same message twice in a row is announced again and nothing stale stays readable.
+  return <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite" onTransitionEnd={() => { if (!toastMsg) setText(''); }}>{text}</div>;
 }

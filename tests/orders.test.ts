@@ -9,9 +9,9 @@ const order = (items: OrderInput['items'], lang: OrderInput['lang'] = 'en'): Ord
 const garments = (): Garment[] => structuredClone(SEED_GARMENTS);
 
 test('buildOrder prices every line on the server and totals the bag', () => {
-  const r = buildOrder(order([{ garmentId: 'zayna', size: 'M', color: 1, qty: 2 }, { garmentId: 'bag-clutch', size: 'ONE', color: 0, qty: 1 }]), garments(), SEED_CATEGORIES);
+  const r = buildOrder(order([{ garmentId: 'zayna', size: 'M', color: 0, qty: 2 }, { garmentId: 'bag-clutch', size: 'ONE', color: 0, qty: 1 }]), garments(), SEED_CATEGORIES);
   assert.ok(r.ok);
-  assert.deepEqual(r.order.items[0], { garmentId: 'zayna', name: 'Zayna', size: 'M', color: 'Espresso', qty: 2, price: 168 });
+  assert.deepEqual(r.order.items[0], { garmentId: 'zayna', name: 'Olive Belted Abaya', size: 'M', color: 'Olive', qty: 2, price: 168 });
   assert.equal(r.order.total, 168 * 2 + 98);
   assert.equal(r.order.customerName, 'Sara');
   assert.ok(!('items' in r.order && (r.order as unknown as { garmentId?: string }).garmentId));
@@ -22,7 +22,7 @@ test('buildOrder uses the sale price and the customer language for names', () =>
   const r = buildOrder(order([{ garmentId: 'noor', size: 'S', color: 0, qty: 1 }], 'ar'), gs, SEED_CATEGORIES);
   assert.ok(r.ok);
   assert.equal(r.order.items[0].price, 120);
-  assert.equal(r.order.items[0].name, 'نور');
+  assert.equal(r.order.items[0].name, 'عباءة عاجية بتطريز فضي');
   assert.equal(r.order.items[0].color, 'عاجي');
 });
 
@@ -32,7 +32,7 @@ test('buildOrder merges the same piece, size and colour into one line (max 10)',
 });
 
 test('buildOrder refuses unknown, hidden and sold-out pieces, and pieces of a hidden collection', () => {
-  const gs = garments();
+  const gs = garments().map(g => (g.id === 'reem' ? { ...g, sizes: g.sizes.map(s => (s.n === 'XL' ? { ...s, ok: false } : s)) } : g));
   assert.deepEqual(buildOrder(order([{ garmentId: 'nope', size: 'M', color: 0, qty: 1 }]), gs, SEED_CATEGORIES), { ok: false, error: 'unavailable', garmentId: 'nope' });
   assert.equal((buildOrder(order([{ garmentId: 'reem', size: 'XL', color: 0, qty: 1 }]), gs, SEED_CATEGORIES) as { error: string }).error, 'soldout');
   assert.equal((buildOrder(order([{ garmentId: 'zayna', size: 'XXXL', color: 0, qty: 1 }]), gs, SEED_CATEGORIES) as { error: string }).error, 'soldout');

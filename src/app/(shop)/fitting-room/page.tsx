@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
-import { FittingRoom } from '@/components/boutique/FittingRoom';
+import { COPY } from '@/components/shop/copy';
+import { TryOnPage } from '@/components/shop/TryOnPage';
+import { requestLang } from '@/lib/lang';
 
-export const metadata: Metadata = { title: 'Virtual Try-On' };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: COPY[await requestLang()].eyebrow };
+}
 
 export default function FittingRoomPage() {
-  return <FittingRoom />;
+  return <TryOnPage />;
 }

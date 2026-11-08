@@ -1,0 +1,67 @@
+/* The earlier sheets (bag, checkout, product drawer, size assistant), the toast and /stylist keep their .btq rules;
+   these bridge them onto the shop's theme colour, type and focus colour, so the buying path reads as one design. */
+.mz-root .btq{font-family:var(--f-body);--ink:inherit;--muted:inherit;--ivory:var(--ground);--field:var(--surface)}
+/* Jost and Vazirmatn load no italic, so nothing in the sheets is slanted, except a real Bodoni italic in English headings */
+.mz-root .btq *{font-style:normal!important}
+.mz-root .btq:not([dir=rtl]) :is(h1,h2,h3) em{font-style:italic!important}
+.mz-root .btq :is(h1,h2,h3){font-family:var(--f-display);font-weight:400}
+.mz-root .btq .sheet,.mz-root .btq .sheet .x{background:var(--ground)}
+.mz-root .btq .btn{background:var(--main);border-color:var(--main);color:var(--on-main);font-weight:400;font-size:12px;letter-spacing:var(--ls-wide);text-transform:uppercase}
+.mz-root .btq .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.mz-root .btq .tlink{color:var(--main);font-weight:400}
+.mz-root .btq .seg button[aria-pressed=true]{background:var(--main);color:var(--on-main)}
+.mz-root .btq .wishbtn[aria-pressed=true]{color:var(--main)}
+.mz-root .btq :focus-visible{outline-color:var(--main)}
+/* Arabic and Persian have no capitals or tracking to carry a 12px label, so buttons read at 14px there */
+.mz-root[dir=rtl] .btq .btn{font-size:14px}
+.mz-root .btq ::selection{background:color-mix(in srgb,var(--main) 22%,transparent)}
+.mz-root .btq :is(.size[aria-pressed=true],.scale .s.on,.msg.me p){background:var(--main);border-color:var(--main);color:var(--on-main)}
+.mz-root .btq .swatch[aria-pressed=true]{box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--main)}
+.mz-root .btq .pd .thumb[aria-pressed=true]{box-shadow:0 0 0 1px var(--main)}
+.mz-root .btq .rec .big{font-family:var(--f-display)}
+/* hover only where hover is real, so a tapped button does not stay tinted on a phone */
+@media (hover:hover){
+  .mz-root .btq .btn:hover{background:color-mix(in srgb,var(--main) 86%,#000);border-color:color-mix(in srgb,var(--main) 86%,#000);color:var(--on-main)}
+  .mz-root .btq .btn.ghost:hover{background:color-mix(in srgb,var(--main) 6%,transparent);color:var(--ink)}
+  .mz-root .btq .tlink:hover{color:var(--ink)}
+  .mz-root .btq .chip:hover{border-color:var(--main);background:color-mix(in srgb,var(--main) 6%,transparent)}
+}
+/* stylist: on phones the two look buttons share one full-width column, the main one first */
+@media (max-width:719px){
+  .btq .sty-actions{width:100%}
+  .btq .sty-actions .btn{flex:1 1 100%}
+  .btq .sty-actions .btn:not(.ghost){order:-1}
+}
+
+/* toast: centred at its own width, and lifted above the sticky buy bars on phones and tablets */
+.btq .toast{left:0;right:0;margin-inline:auto;width:max-content;max-width:calc(100vw - 40px);transform:translateY(12px)}
+.btq .toast.show{transform:none}
+@media (max-width:900px){
+  .mz-root:has(.mz-pd__bar,.mz-try-bar) .btq .toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+}
+
+/* date picker: every rule under .mz-date, so the sheets' plain `button` reset cannot outrank it */
+.mz-date{position:relative;display:flex;flex-direction:column;gap:4px}
+.mz-date .mz-date__field{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;padding:0 14px;font:inherit;font-size:16px;color:var(--ink);text-align:start;background:var(--field,var(--surface));border:1px solid color-mix(in srgb,var(--ink) 20%,transparent);border-radius:2px;cursor:pointer;transition:border-color .3s}
+.mz-date .mz-date__field.is-empty span{color:var(--muted)}
+.mz-date .mz-date__field .mz-ic{color:var(--main)}
+.mz-date .mz-date__clear{align-self:flex-start;min-height:32px;padding:0;background:none;border:0;font:inherit;font-size:13px;color:var(--main);text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.mz-date .mz-date__panel{position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:20;width:100%;max-width:400px;padding:12px;scroll-margin-block:16px;background:var(--ground);border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);box-shadow:0 22px 44px -22px rgba(43,27,28,.4)}
+.mz-date .mz-date__panel::after{content:"";position:absolute;top:100%;inset-inline-start:0;width:1px;height:calc(16px + env(safe-area-inset-bottom))}
+.mz-date .mz-date__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-family:var(--f-display);font-size:17px;color:var(--ink)}
+.mz-date .mz-date__nav{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;background:none;border:0;border-radius:50%;color:var(--ink);cursor:pointer;transition:background-color .3s}
+.mz-date .mz-date__nav[aria-disabled]{opacity:.3;cursor:default}
+.mz-date .mz-date__row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mz-date .mz-date__row > [role=columnheader]{padding:6px 0;text-align:center;font-size:12px;color:var(--muted)}
+.mz-date .mz-date__row abbr{text-decoration:none}
+.mz-date .mz-date__row > [role=gridcell]{display:flex;justify-content:center}
+.mz-date .mz-date__day{width:min(44px,100%);aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:none;border:0;border-radius:50%;font:inherit;font-size:15px;color:var(--ink);cursor:pointer;transition:background-color .25s,color .25s}
+.mz-date .mz-date__day.is-today{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 30%,transparent)}
+.mz-date .mz-date__day.is-on{background:var(--main);color:var(--on-main)}
+.mz-date .mz-date__day[aria-disabled]{color:color-mix(in srgb,var(--ink) 28%,transparent);cursor:default}
+.mz-date :focus-visible{outline:2px solid var(--main);outline-offset:2px}
+@media (hover:hover){
+  .mz-date .mz-date__field:hover{border-color:var(--main)}
+  .mz-date .mz-date__nav:hover:not([aria-disabled]){background:color-mix(in srgb,var(--main) 8%,transparent)}
+  .mz-date .mz-date__day:hover:not([aria-disabled]):not(.is-on){background:color-mix(in srgb,var(--main) 10%,transparent)}
+}

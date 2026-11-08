@@ -13,7 +13,12 @@ export function allow(key: string, limit: number, windowMs: number, now = Date.n
   return b.count <= limit;
 }
 
-/** Best-effort client address from proxy headers. */
+/** The client's address as the host's proxy recorded it, not as the client claims it. A client can send any
+ *  x-forwarded-for it likes, and proxies append the address they saw to the end, so the last entry is the trustworthy
+ *  one and the first is not. Vercel's own header comes first when present; x-real-ip is the last resort, since a
+ *  proxy that does not set it passes a client's value through. */
 export function clientIp(req: Request): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'local';
+  const h = req.headers;
+  const last = (v: string | null) => v?.split(',').map(x => x.trim()).filter(Boolean).pop();
+  return h.get('x-vercel-forwarded-for')?.split(',')[0].trim() || last(h.get('x-forwarded-for')) || h.get('x-real-ip')?.trim() || 'local';
 }

@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react';
 import { SIZE_ORDER } from '@/lib/defaults';
 import { chartOf, recommendSize, type FitPref, type SizeInputs } from '@/lib/fit';
+import { Icon } from '../shop/Icon';
 import { Art } from './Art';
 import { Sheet, useBoutique } from './Boutique';
 
@@ -41,7 +42,7 @@ function Body({ garmentId, onUse, onClose }: { garmentId: string; onUse: (s: str
     <div className="sheet-pad">
       <div className="label-row" style={{ alignItems: 'center' }}>
         <span className="kicker">{t.szT}</span>
-        <button type="button" className="ibtn" aria-label={t.close} onClick={onClose} style={{ marginInlineEnd: -10 }}><i className="ph-duotone ph-x" style={{ fontSize: 20 }} /></button>
+        <button type="button" className="ibtn" aria-label={t.close} onClick={onClose} style={{ marginInlineEnd: -10 }}><Icon name="close" size={20} /></button>
       </div>
       <div className="for">
         <div className="pic"><span style={{ position: 'absolute', inset: 4 }}><Art g={g} /></span></div>
@@ -62,7 +63,7 @@ function Body({ garmentId, onUse, onClose }: { garmentId: string; onUse: (s: str
           <div className="field"><span>{t.lenPref} · <em>{t.optional}</em></span>{seg([['ankle', t.ankle], ['floor', t.floor]], sz.len, v => set({ len: v }))}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <button type="button" className="tlink" style={{ color: 'var(--ink)', fontWeight: 400, fontSize: 15 }} aria-expanded={sz.meas} onClick={() => set({ meas: !sz.meas })}>
-              <i className={sz.meas ? 'ph-duotone ph-minus' : 'ph-duotone ph-plus'} style={{ color: 'var(--olive-7)' }} />{t.optMeas} <em className="muted">{t.optional}</em>
+              <Icon name={sz.meas ? 'minus' : 'plus'} size={18} style={{ color: 'var(--main)' }} />{t.optMeas} <em className="muted">{t.optional}</em>
             </button>
             {sz.meas && (
               <div className="meas">
@@ -73,8 +74,8 @@ function Body({ garmentId, onUse, onClose }: { garmentId: string; onUse: (s: str
             )}
           </div>
           <button type="button" className="btn block" onClick={() => setStep('result')}>{t.recommend}</button>
-          <p style={{ margin: 0, fontSize: 13, color: 'rgba(41,35,31,.7)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
-            <i className="ph-duotone ph-camera-slash" style={{ flex: 'none' }} />{t.noPhoto}
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(41,35,31,.7)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Icon name="noCamera" size={18} />{t.noPhoto}
           </p>
         </div>
       ) : !rec ? (
@@ -84,7 +85,7 @@ function Body({ garmentId, onUse, onClose }: { garmentId: string; onUse: (s: str
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
-          <span className="infotag"><i className="ph-duotone ph-info" />{t.guidance}</span>
+          <span className="infotag"><Icon name="info" size={18} />{t.guidance}</span>
           <div className="rec">
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span className="kicker" style={{ fontSize: 13, letterSpacing: '.14em' }}>{t.suggest}</span>

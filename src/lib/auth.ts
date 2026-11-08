@@ -34,3 +34,5 @@ export async function jsonBody(req: Request): Promise<unknown> {
 
 export const bad = (errors: Record<string, string>) => NextResponse.json({ errors }, { status: 400 });
 export const notFound = () => NextResponse.json({ error: 'not found' }, { status: 404 });
+/** A save the database refused (e.g. columns a fresh setup lacks): the admin editor shows this message. */
+export const failed = (e: unknown) => NextResponse.json({ error: `ذخیره نشد: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });

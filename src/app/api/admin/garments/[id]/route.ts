@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { bad, guardAdminApi, jsonBody, notFound } from '@/lib/auth';
+import { bad, failed, guardAdminApi, jsonBody, notFound } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { validateGarment } from '@/lib/validate';
 
@@ -10,8 +10,12 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (denied) return denied;
   const r = validateGarment(await jsonBody(req));
   if (!r.ok) return bad(r.errors);
-  const g = await db().updateGarment((await params).id, r.value);
-  return g ? NextResponse.json(g) : notFound();
+  try {
+    const g = await db().updateGarment((await params).id, r.value);
+    return g ? NextResponse.json(g) : notFound();
+  } catch (e) {
+    return failed(e);
+  }
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
