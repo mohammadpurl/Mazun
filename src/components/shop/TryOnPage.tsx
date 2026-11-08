@@ -9,6 +9,7 @@ import { ONE_SIZE } from '@/lib/defaults';
 import type { Garment } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { InfoDialog, productHref } from './Chrome';
+import { savedSize } from './concierge/saved';
 import { LiveMirror } from './LiveMirror';
 import { Icon, type DuoIconName, type IconName } from './Icon';
 import { useShop } from './Shop';
@@ -60,7 +61,9 @@ export function TryOnPage() {
 
   const garments = b.garments;
   useEffect(() => {
-    const q = new URLSearchParams(location.search).get('g');
+    const params = new URLSearchParams(location.search);
+    const q = params.get('g');
+    if (params.get('live') === '1') setLive(true);
     const fromQuery = b.byId(q);
     const latestPick = [...picks].reverse().map(id => b.byId(id)).find(x => x?.kind === 'garment');
     const first = fromQuery?.kind === 'garment' ? fromQuery : latestPick;
@@ -85,7 +88,9 @@ export function TryOnPage() {
     cancelRun();
     setStep(3); setDressing(true); setResult(null); setFailed(false); setAdded(null); clip.set(100);
     // A free-size piece has nothing to choose, so its one size is picked for the customer.
-    setSize(s => (g.sizes.some(x => x.n === s && x.ok) ? s : g.sizes.length === 1 && g.sizes[0].n === ONE_SIZE && g.sizes[0].ok ? ONE_SIZE : null));
+    // The size the stylist already found for this piece comes along.
+    const fromChat = savedSize(g.id);
+    setSize(s => (g.sizes.some(x => x.n === s && x.ok) ? s : g.sizes.length === 1 && g.sizes[0].n === ONE_SIZE && g.sizes[0].ok ? ONE_SIZE : g.sizes.some(x => x.n === fromChat && x.ok) ? fromChat : null));
     const id = run.current;
     const minWait = new Promise(r => setTimeout(r, reduce ? 300 : 2800));
     const done = (img: string) => {
@@ -278,7 +283,7 @@ export function TryOnPage() {
                   <>
                     <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{c.p1Title}</h2><p>{c.p1Body}</p></div>
                     <ul className="mz-tips">{c.tips.map((tip, i) => <li key={tip}><span className="mz-chip"><Icon name={TIP_ICONS[i] ?? 'check'} weight="duotone" /></span>{tip}</li>)}</ul>
-                    <p className="mz-note"><Icon name="lock" size={18} />{c.privacy}</p>
+                    <p className="mz-note"><Icon name="lock" size={18} />{!b.ai.image && b.ai.free ? c.freeConsent : c.privacy}</p>
                     <div className="mz-panel__acts mz-only-wide-flex">
                       <button type="button" className="mz-reset mz-btn is-main" disabled={!source} onClick={() => setStep(2)}>{c.continue}<Icon name="next" size={20} className="mz-arrow" /></button>
                       {source && <SourceSwitch source={source} onPhoto={() => fileA.current?.click()} onModel={() => setSource({ kind: 'model' })} />}
@@ -344,6 +349,7 @@ export function TryOnPage() {
                         <button type="button" className="mz-reset" onClick={share}><Icon name="share" />{c.share}</button>
                       </div>
                     </div>
+                    <Link href={`/?g=${encodeURIComponent(g.id)}#talk`} className="mz-link is-main mz-try-back"><Icon name="chat" size={18} />{c.aiBack}</Link>
                     <p className="mz-note is-plain"><Icon name="info" size={18} />{c.disclaimer}</p>
                   </>
                 )}

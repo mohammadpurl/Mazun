@@ -12,6 +12,7 @@ import { productHref } from './Chrome';
 import { trapTab } from './focus';
 import { useLiveAi } from './liveAi';
 import { Icon } from './Icon';
+import { createPoseTracker, type PoseLandmark, type PoseTracker } from './pose';
 import { useShop } from './Shop';
 import { SPRING, cardBg, num } from './tokens';
 
@@ -19,10 +20,8 @@ import { SPRING, cardBg, num } from './tokens';
    runs in the browser (MediaPipe pose landmarker, loaded on demand from our own public/mediapipe); no frame leaves
    the device unless the customer asks for a realistic render, which goes through the regular try-on. */
 
-const MODEL = '/mediapipe/pose_landmarker_lite.task';
-
-type Pt = { x: number; y: number; visibility?: number };
-type Landmarker = { detectForVideo(v: HTMLVideoElement, t: number): { landmarks: Pt[][] }; close(): void };
+type Pt = PoseLandmark;
+type Landmarker = PoseTracker;
 type Status = 'starting' | 'live' | 'denied' | 'unsupported' | 'error';
 /** One sleeve lifted off the garment: its own small canvas (`ox`, `oy` place it on the cut-out), the shoulder it turns
  *  on, and the direction it hangs in the photo. */
@@ -188,11 +187,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
     let lm: Landmarker | null = null, raf = 0, stop = false, last = -1, misses = 0, ready = false;
     (async () => {
       try {
-        const vision = await import('@mediapipe/tasks-vision');
-        const files = await vision.FilesetResolver.forVisionTasks('/mediapipe/wasm');
-        const make = (delegate: 'GPU' | 'CPU') => vision.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'VIDEO', numPoses: 1 });
-        // Some phones and older laptops have no usable GPU path; the CPU one is slower but works.
-        lm = (await make('GPU').catch(() => make('CPU'))) as unknown as Landmarker;
+        lm = await createPoseTracker();
         if (stop) { lm?.close(); return; }
         ready = true;
         setTracking('ready');

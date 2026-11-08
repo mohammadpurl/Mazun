@@ -17,7 +17,7 @@ export function NotFound({ what }: { what: 'piece' | 'page' }) {
         <h1 className="mz-h2">{title}</h1>
         <p className="mz-body">{what === 'piece' ? c.notFoundBody : c.pageNotFoundBody}</p>
         <Ornament className="mz-404__orn" />
-        <Link href="/#collection" className="mz-btn is-main">{c.notFoundCta}<Icon name="next" size={20} className="mz-arrow" /></Link>
+        <Link href="/collection" className="mz-btn is-main">{c.notFoundCta}<Icon name="next" size={20} className="mz-arrow" /></Link>
       </div>
     </main>
   );

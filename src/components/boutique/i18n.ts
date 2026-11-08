@@ -31,7 +31,7 @@ const en = {
   szT: 'Find my size', szFor: 'For', height: 'Height (cm)', usual: 'Your usual size', fitPref: 'Fit preference',
   fitted: 'Fitted', regular: 'Regular', relaxed: 'Relaxed', optMeas: 'Add body measurements', optional: 'optional',
   bust: 'Bust', waist: 'Waist', hips: 'Hips', lenPref: 'Preferred length', ankle: 'Ankle', floor: 'Floor',
-  recommend: 'See my recommendation', noPhoto: 'We never estimate measurements from a photo.',
+  recommend: 'See my recommendation', noPhoto: 'Your answers stay on this device.',
   guidance: 'A guide based on your details — not a guaranteed fit', suggest: 'We suggest', range: 'Available sizes', guide: 'Size guide · cm',
   adjust: 'Adjust fit', edit: 'Edit details', useSize: 'Select size', recLabel: 'For you', lengthCol: 'Length', noneAvailable: 'No size is in stock right now.',
   explain: (usual: string, fit: string, rec: string, type: string, bust: string, ease: number | null, h: number, hn: 'tall' | 'short' | 'ok', len: 'ankle' | 'floor') =>
@@ -108,7 +108,7 @@ const ar: Strings = {
   szT: 'اعرفي مقاسكِ', szFor: 'لقطعة', height: 'الطول (سم)', usual: 'مقاسكِ المعتاد', fitPref: 'القَصّة المفضلة',
   fitted: 'ضيّقة', regular: 'عادية', relaxed: 'واسعة', optMeas: 'أضيفي قياسات الجسم', optional: 'اختياري',
   bust: 'الصدر', waist: 'الخصر', hips: 'الورك', lenPref: 'الطول المفضل', ankle: 'إلى الكاحل', floor: 'إلى الأرض',
-  recommend: 'اعرضي التوصية', noPhoto: 'لا نقدّر القياسات من الصور أبداً.',
+  recommend: 'اعرضي التوصية', noPhoto: 'تبقى إجاباتكِ على هذا الجهاز.',
   guidance: 'دليل مبني على بياناتكِ — وليس ضماناً للمقاس', suggest: 'نقترح', range: 'المقاسات المتوفرة', guide: 'دليل المقاسات · سم',
   adjust: 'عدّلي القَصّة', edit: 'عدّلي البيانات', useSize: 'اختاري مقاس', recLabel: 'لكِ', lengthCol: 'الطول', noneAvailable: 'لا يتوفر أي مقاس حالياً.',
   explain: (usual, fit, rec, type, bust, ease, h, hn, len) =>
@@ -183,7 +183,7 @@ const fa: Strings = {
   szT: 'سایز من چیست؟', szFor: 'برای', height: 'قد (سانتی‌متر)', usual: 'سایز معمول شما', fitPref: 'فرم دلخواه',
   fitted: 'جذب', regular: 'معمولی', relaxed: 'آزاد', optMeas: 'افزودن اندازه‌های بدن', optional: 'اختیاری',
   bust: 'دور سینه', waist: 'دور کمر', hips: 'دور باسن', lenPref: 'قد دلخواه', ankle: 'تا مچ پا', floor: 'تا زمین',
-  recommend: 'دیدن پیشنهاد', noPhoto: 'ما هرگز اندازه‌ها را از روی عکس تخمین نمی‌زنیم.',
+  recommend: 'دیدن پیشنهاد', noPhoto: 'پاسخ‌های شما روی همین دستگاه می‌ماند.',
   guidance: 'راهنمایی بر اساس اطلاعات شما — تضمین اندازه نیست', suggest: 'پیشنهاد ما', range: 'سایزهای موجود', guide: 'جدول سایز · سانتی‌متر',
   adjust: 'تنظیم فرم', edit: 'ویرایش اطلاعات', useSize: 'انتخاب سایز', recLabel: 'برای شما', lengthCol: 'قد', noneAvailable: 'فعلاً هیچ سایزی موجود نیست.',
   explain: (usual, fit, rec, type, bust, ease, h, hn, len) =>

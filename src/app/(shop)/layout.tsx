@@ -1,6 +1,7 @@
 import './boutique.css';
 import './shop.css';
 import './sheets.css';
+import './landing.css';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';

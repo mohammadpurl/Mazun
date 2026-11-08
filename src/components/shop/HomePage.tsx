@@ -1,152 +1,308 @@
 'use client';
-/* eslint-disable @next/next/no-img-element -- transparent garment cut-outs from the catalogue */
+/* eslint-disable @next/next/no-img-element -- transparent garment cut-outs and sample photographs */
 import gsap from 'gsap';
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from 'motion/react';
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from 'motion/react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { fill } from '@/lib/concierge';
 import { effectivePrice } from '@/lib/fit';
-import type { Garment } from '@/lib/types';
+import { accessoriesByRole, lookTotal, presetPicks } from '@/lib/stylist';
+import { ACCESSORY_KINDS } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
-import { productHref } from './Chrome';
+import { BodyScan } from './concierge/BodyScan';
+import { Chat } from './concierge/Chat';
+import { ConciergeProvider, useConcierge } from './concierge/useConcierge';
 import { FlipCard } from './FlipCard';
-import { Ornament, SplitReveal, useScrollScene } from './fx';
-import { Icon, type DuoIconName, type IconName } from './Icon';
+import { SplitReveal, useScrollScene } from './fx';
+import { Icon, type IconName } from './Icon';
 import { useShop } from './Shop';
-import { EASE, SPRING, isPale, num, railOrder, reveal } from './tokens';
+import { EASE, SPRING, cardBg, num, reveal } from './tokens';
 
+/** The home page is the product: a working conversation first, then each thing the stylist does, shown doing it. */
 export function HomePage() {
   return (
-    <main>
-      <Hero />
-      <Collection />
-      <Craft />
-      <Rack />
-      <TryTeaser />
-    </main>
+    <ConciergeProvider>
+      <main className="ai-page">
+        <Hero />
+        <Wear />
+        <SizeScene />
+        <TheSet />
+        <Browse />
+        <Close />
+      </main>
+      <Dock />
+      <BodyScan />
+    </ConciergeProvider>
   );
 }
 
-const rise = (i: number) => ({ initial: { opacity: 0, y: 22 }, animate: { opacity: 1, y: 0 }, transition: { ...SPRING.soft, delay: 0.08 * i } });
+const rise = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { ...SPRING.soft, delay: 0.07 * i } });
 
-/** House model photos for the hero, cut out on transparent ground (public/images/models). */
-const HERO_MODELS = [
-  { src: '/images/models/olive.webp', alt: 'heroAltOlive' },
-  { src: '/images/models/black.webp', alt: 'heroAltBlack' },
-] as const;
-
-/** Hero: an editorial cover. The headline sits beside a house model; the photos crossfade every 7 s, held on hover,
- *  on keyboard focus and by the pause button. */
 function Hero() {
   const b = useBoutique();
   const { c } = useShop();
+  const a = useConcierge();
   const reduce = useReducedMotion();
-  // The piece chosen in admin (Settings → featured) opens the hero when a model wears it; the house photos follow.
-  const featured = b.byId(b.settings.home.featuredId);
-  const looks = [
-    ...(featured?.kind === 'garment' && featured.wornFront ? [{ src: featured.wornFront, alt: `${c.wearing} ${b.tx(featured.name)}` }] : []),
-    ...HERO_MODELS.map(m => ({ src: m.src, alt: c[m.alt] })),
+  const g = a.garment;
+  const photo = g?.wornFront || g?.front;
+  const set = ACCESSORY_KINDS.filter(k => a.picks[k]).length;
+  const steps: { label: string; href: string; icon: IconName }[] = [
+    { label: c.aiStepTalk, href: '#talk', icon: 'chat' },
+    { label: c.aiStepWear, href: '#wear', icon: 'yourPhoto' },
+    { label: c.aiStepSize, href: '#size', icon: 'ruler' },
+    { label: c.aiStepSet, href: '#set', icon: 'handbag' },
   ];
-  const [li, setLi] = useState(0);
-  // Advances every 7 s; a manual step restarts the wait. A mouse over the hero or keyboard focus inside it holds it
-  // (each on its own, so leaving one does not release the other), and the pause button stops it until pressed again.
-  const [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false), [paused, setPaused] = useState(false);
-  const held = hovered || focused || paused;
-  useEffect(() => {
-    if (reduce || held || looks.length < 2) return;
-    const t = setTimeout(() => setLi(i => (i + 1) % looks.length), 7000);
-    return () => clearTimeout(t);
-  }, [reduce, held, looks.length, li]);
-  // A manual step is announced; autoplay alone is not.
-  const [manual, setManual] = useState(false);
-  // useReducedMotion() is null on the server, so it reaches aria-live only after mount; the first render matches the server.
-  const [calm, setCalm] = useState(false);
-  useEffect(() => setCalm(!!reduce), [reduce]);
-  const step = (d: number) => { setManual(true); setLi(i => (i + d + looks.length) % looks.length); };
-  const section = useRef<HTMLElement>(null);
-  const gx = useSpring(useMotionValue(0), { stiffness: 40, damping: 18 }), gy = useSpring(useMotionValue(0), { stiffness: 40, damping: 18 });
-  // Scroll depth: the wordmark drifts down slowest, the model sinks behind the fold, the copy leaves first.
-  useScrollScene(section, root => {
-    const st = { trigger: root, start: 'top top', end: 'bottom top', scrub: true };
-    gsap.to(root.querySelector('.mz-par-word'), { yPercent: 30, ease: 'none', scrollTrigger: st });
-    // Only where the model stands beside the copy; on narrower screens it sits above the headline and would slide over it.
-    gsap.matchMedia().add('(min-width: 1100px)', () => {
-      gsap.to(root.querySelector('.mz-hero__media'), { y: 80, ease: 'none', scrollTrigger: st });
-      gsap.to(root.querySelector('.mz-hero__copy'), { y: -100, opacity: 0, ease: 'none', scrollTrigger: { ...st, start: 'top+=120 top' } });
-    });
-  });
-  // Only claims the shop can keep: the origin city from settings, front-and-back photos, and try-on when the AI is set up.
-  const trust: { icon: IconName; text: string }[] = [
-    { icon: 'send', text: c.heroShips.replace('{city}', b.tx(b.settings.originCity)) },
-    ...(b.garments.length && b.garments.every(g => g.back) ? [{ icon: 'turn' as const, text: c.heroBothSides }] : []),
-    ...(b.ai.image || b.ai.free ? [{ icon: 'yourPhoto' as const, text: c.heroTryOn }] : []),
-  ];
-  const sign = b.dir === 'rtl' ? -1 : 1;
-
   return (
-    <section ref={section} id="top" className="mz-hero"
-      onPointerEnter={e => { if (e.pointerType === 'mouse') setHovered(true); }} onPointerLeave={e => { if (e.pointerType === 'mouse') { setHovered(false); gx.set(0); gy.set(0); } }}
-      onFocus={e => { if (e.target.matches(':focus-visible')) setFocused(true); }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); }}
-      onPointerMove={e => { if (reduce || e.pointerType !== 'mouse') return; const r = e.currentTarget.getBoundingClientRect(); gx.set((e.clientX - r.left - r.width / 2) * 0.12); gy.set((e.clientY - r.top - r.height / 2) * 0.08); }}>
-      <motion.div className="mz-hero__glow" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ x: gx, y: gy }} transition={{ duration: 1.4, delay: 0.4, ease: EASE }} />
-      <div className="mz-par-word"><motion.p className="mz-hero__word" aria-hidden="true" key={b.lang}
-        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={reduce ? { duration: 0 } : { duration: 2, ease: EASE, delay: 0.1 }}>{b.dir === 'rtl' ? c.brand1 : 'MAZUN'}</motion.p></div>
+    <section id="talk" className="ai-hero">
+      <div className="ai-hero__head">
+        <motion.p className="ai-eyebrow" {...rise(1)}>{c.aiEyebrow}</motion.p>
+        <SplitReveal key={b.lang} as="h1" className="ai-h1" text={c.aiH1} />
+        <motion.p className="ai-hero__sub" {...rise(3)}>{c.aiSub}</motion.p>
+      </div>
 
-      <div className="mz-hero__in">
-        <div className="mz-hero__copy">
-          <motion.p className="mz-eyebrow is-gold mz-hero__eyebrow" {...rise(1)}><span aria-hidden="true" />{c.eyebrowHero}</motion.p>
-          <SplitReveal key={b.lang} as="h1" className="mz-hero__lead" text={c.lead} />
-          <motion.p className="mz-hero__sub" {...rise(4)}>{c.sub}</motion.p>
-          <motion.div className="mz-hero__ctas" {...rise(5)}>
-            <a href="#collection" className="mz-btn is-light mz-pill">{c.ctaShop}<Icon name="next" size={20} className="mz-arrow" /></a>
-            <a href="#rack" className="mz-btn mz-pill is-ghost">{c.ctaRack}</a>
-          </motion.div>
-          <motion.div className="mz-hero__nav" {...rise(6)}>
-            <p className="mz-hero__count" aria-live={held || calm || manual ? 'polite' : 'off'} aria-atomic="true">
-              <span aria-hidden="true">{num(li + 1, b.lang, 2)}</span><span className="mz-hero__dash" aria-hidden="true" /><span aria-hidden="true">{num(looks.length, b.lang, 2)}</span>
-              <span className="mz-sr">{`${c.heroSlide} ${num(li + 1, b.lang)} ${c.heroOf} ${num(looks.length, b.lang)}`}</span>
-            </p>
-            <button type="button" className="mz-reset mz-icon-btn mz-round" aria-label={c.heroPrev} onClick={() => step(-1)}><Icon name="back" size={20} /></button>
-            <button type="button" className="mz-reset mz-icon-btn mz-round" aria-label={c.heroNext} onClick={() => step(1)}><Icon name="next" size={20} /></button>
-            <button type="button" className="mz-reset mz-icon-btn mz-round mz-hero__pause" aria-label={paused ? c.heroPlay : c.heroPause} onClick={() => setPaused(p => !p)}><Icon name={paused ? 'play' : 'pause'} size={18} /></button>
-          </motion.div>
-        </div>
-
-        <div className="mz-hero__media">
-          <motion.div className="mz-hero__frame" initial={{ opacity: 0, clipPath: 'inset(12% 0 0 0 round 999px 999px 0 0)' }} animate={{ opacity: 1, clipPath: 'inset(0% 0 0 0 round 999px 999px 0 0)' }}
-            transition={reduce ? { duration: 0 } : { duration: 1.6, ease: EASE, delay: 0.2 }} aria-hidden="true" />
-          {looks.map((m, i) => (
-            <motion.img key={m.src} src={m.src} alt={m.alt} aria-hidden={i !== li || undefined} className="mz-hero__model" draggable={false}
-              fetchPriority={i === 0 ? 'high' : 'low'} decoding={i === 0 ? 'auto' : 'async'} initial={false}
-              animate={{ opacity: i === li ? 1 : 0, scale: i === li ? 1 : 1.03, x: i === li ? 0 : (i < li ? -18 : 18) * sign }}
-              transition={reduce ? { duration: 0 } : { opacity: { duration: 1.2, ease: EASE }, default: { duration: 1.6, ease: EASE } }} />
-          ))}
+      <div className="ai-stage" style={{ background: cardBg(g?.colors[0]?.hex) }}>
+        <span className="ai-stage__floor" aria-hidden="true" />
+        <AnimatePresence initial={false}>
+          {photo && (
+            <motion.img key={photo} src={photo} alt={g ? `${c.wearing} ${b.tx(g.name)}` : ''} className="ai-stage__model" draggable={false} fetchPriority="high"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, scale: 1.02 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: EASE }} />
+          )}
+        </AnimatePresence>
+        <div className="ai-stage__tags">
+          <AnimatePresence>
+            {a.sized && a.sized.garmentId === g?.id && (
+              <motion.span key="size" className="ai-tag" initial={{ opacity: 0, y: 10, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={SPRING.soft}>
+                <Icon name="ruler" size={16} />{c.aiStepSize}<b dir="ltr">{a.sized.rec.size}</b>
+              </motion.span>
+            )}
+            {a.reached >= 4 && set > 0 && (
+              <motion.span key="set" className="ai-tag" initial={{ opacity: 0, y: 10, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={SPRING.soft}>
+                <Icon name="handbag" size={16} />{c.aiStepSet}<b>+{num(set, b.lang)}</b>
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      <motion.ul className="mz-hero__trust" {...rise(7)}>
-        {trust.map(t => <li key={t.icon}><Icon name={t.icon} size={22} /><span>{t.text}</span></li>)}
-      </motion.ul>
+      <Chat />
+
+      <nav className="ai-rail" aria-label={c.aiStepsLabel}>
+        <ol>
+          {steps.map((s, i) => (
+            <li key={s.href} className={a.reached > i ? 'is-on' : undefined}>
+              <a href={s.href} onClick={i === 0 ? e => { e.preventDefault(); a.takeOver(); } : undefined}>
+                <Icon name={s.icon} size={18} /><span>{s.label}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
     </section>
   );
 }
 
-function Collection() {
+/** Sample pairs: the customer photo beside the abaya the stylist dressed her in (public/images/tryon). */
+const SAMPLES = [{ id: 'noor', src: '/images/tryon/customer-noor.webp' }, { id: 'layal', src: '/images/tryon/customer-layal.webp' }];
+
+function Wear() {
+  const b = useBoutique();
+  const { c } = useShop();
+  const reduce = useReducedMotion();
+  const [i, setI] = useState(0);
+  const pos = useMotionValue(reduce ? 50 : 88);
+  const clip = useTransform(pos, v => `inset(0 0 0 ${v}%)`);
+  const left = useTransform(pos, v => `${v}%`);
+  const [val, setVal] = useState(50);
+  useMotionValueEvent(pos, 'change', v => setVal(Math.round(v)));
+  const hinted = useRef(false);
+  const hint = () => {
+    if (hinted.current || reduce) return;
+    hinted.current = true;
+    animate(pos, 42, { duration: 1.6, ease: EASE, delay: 0.2 });
+  };
+  const sample = SAMPLES[i];
+  const g = b.byId(sample.id);
+  return (
+    <section id="wear" className="ai-sec ai-wear">
+      <div className="ai-wrap ai-split">
+        <motion.div className="ai-copy" {...reveal}>
+          <p className="ai-eyebrow">{c.aiWearK}</p>
+          <SplitReveal className="ai-h2" text={c.aiWearT} />
+          <p className="ai-body">{c.aiWearB}</p>
+          <div className="ai-swatches" role="group" aria-label={c.aiWearPick}>
+            {SAMPLES.map((s, n) => {
+              const piece = b.byId(s.id);
+              return (
+                <button key={s.id} type="button" className="mz-reset ai-swatch" aria-pressed={n === i} aria-label={piece ? b.tx(piece.name) : s.id} title={piece ? b.tx(piece.name) : undefined} onClick={() => setI(n)}>
+                  {piece?.front && <img src={piece.front} alt="" loading="lazy" decoding="async" />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="ai-ctas">
+            <Link href={`/fitting-room?g=${sample.id}`} className="mz-btn is-main mz-pill">{c.aiWearPhoto}<Icon name="next" size={20} className="mz-arrow" /></Link>
+            <Link href={`/fitting-room?g=${sample.id}&live=1`} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
+          </div>
+        </motion.div>
+        <motion.div className="ai-compare" dir="ltr" onViewportEnter={hint} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={SPRING.soft}>
+          <img src="/images/tryon/customer.webp" alt={c.aiWearAltBefore} loading="lazy" decoding="async" draggable={false} />
+          <AnimatePresence initial={false}>
+            <motion.div key={sample.src} className="ai-compare__after" style={{ clipPath: clip }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
+              <img src={sample.src} alt={`${c.aiWearAltAfter} ${g ? b.tx(g.name) : ''}`} loading="lazy" decoding="async" draggable={false} />
+            </motion.div>
+          </AnimatePresence>
+          <motion.span className="ai-compare__line" style={{ left }} aria-hidden="true"><span><Icon name="swap" size={20} /></span></motion.span>
+          <span className="ai-compare__tag is-before" aria-hidden="true">{c.aiWearBefore}</span>
+          <span className="ai-compare__tag is-after" aria-hidden="true">{c.aiWearAfter}</span>
+          <span className="ai-compare__tag is-sample">{c.aiWearSample}</span>
+          <input type="range" min={4} max={96} value={val} aria-label={c.aiWearDrag} onChange={e => pos.set(Number(e.target.value))} />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/** The measured figure, from a house photo: where the scan reads her, in the photo's own pixels. */
+const FIGURE = { src: '/images/worn/noor-front.webp', w: 379, h: 997 };
+const READINGS = { height: 168, shoulder: 37, bust: 91, size: 'M' };
+
+function SizeScene() {
+  const b = useBoutique();
+  const { c } = useShop();
+  const a = useConcierge();
+  const section = useRef<HTMLElement>(null);
+  useScrollScene(section, root => {
+    // Plays once on arrival, so a visitor who jumps here from the menu still sees the whole reading.
+    const tl = gsap.timeline({ scrollTrigger: { trigger: root.querySelector('.ai-split'), start: 'top 70%', once: true }, defaults: { ease: 'power2.out' } });
+    tl.fromTo(root.querySelectorAll('.ai-figure [pathLength]'), { strokeDashoffset: 1 }, { strokeDashoffset: 0, stagger: 0.28, duration: 0.8 }, 0)
+      .fromTo(root.querySelectorAll('.ai-figure circle'), { scale: 0, transformOrigin: 'center', transformBox: 'fill-box' }, { scale: 1, stagger: 0.1, duration: 0.35 }, 0.3);
+    root.querySelectorAll<HTMLElement>('[data-count]').forEach((el, i) => {
+      const end = Number(el.dataset.count), proxy = { v: 0 };
+      tl.fromTo(proxy, { v: 0 }, { v: end, duration: 0.8, onUpdate: () => { el.textContent = num(Math.round(proxy.v), b.lang); } }, 0.25 + 0.25 * i);
+    });
+    tl.fromTo(root.querySelector('.ai-readout__size'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 1.3);
+  }, [b.lang]);
+  const rows = [
+    { label: c.aiSizeHeight, v: READINGS.height },
+    { label: c.aiSizeShoulder, v: READINGS.shoulder },
+    { label: c.aiSizeBust, v: READINGS.bust },
+  ];
+  return (
+    <section ref={section} id="size" className="ai-sec ai-size-sec">
+      <div className="ai-wrap ai-split is-flip">
+        <div className="ai-figure">
+          <div className="ai-figure__in" style={{ aspectRatio: `${FIGURE.w} / ${FIGURE.h}` }}>
+            <img src={FIGURE.src} alt="" loading="lazy" decoding="async" draggable={false} />
+            <svg viewBox={`0 0 ${FIGURE.w} ${FIGURE.h}`} aria-hidden="true">
+              <path d="M26 10V985M14 10H38M14 985H38" pathLength={1} strokeDasharray="1" />
+              <path d="M112 196H268" pathLength={1} strokeDasharray="1" />
+              <path d="M124 262H256" pathLength={1} strokeDasharray="1" />
+              {[[112, 196], [268, 196], [124, 262], [256, 262]].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={6} />)}
+            </svg>
+          </div>
+        </div>
+        <motion.div className="ai-copy" {...reveal}>
+          <p className="ai-eyebrow is-light">{c.aiSizeK}</p>
+          <SplitReveal className="ai-h2 is-light" text={c.aiSizeT} />
+          <p className="ai-body is-light">{c.aiSizeB}</p>
+          <dl className="ai-readout" aria-label={c.aiSizeSample}>
+            {rows.map(r => (
+              <div key={r.label}><dt>{r.label}</dt><dd><span data-count={r.v}>{num(r.v, b.lang)}</span> <small>{c.aiSizeCm}</small></dd></div>
+            ))}
+            <div className="ai-readout__size"><dt>{c.aiSizeFit}</dt><dd dir="ltr">{READINGS.size}</dd></div>
+          </dl>
+          <p className="ai-sample-note">{c.aiSizeSample}</p>
+          <div className="ai-ctas">
+            <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => a.setScanning(true)}><Icon name="camera" size={20} />{c.aiSizeScanCta}</button>
+            <button type="button" className="mz-reset mz-btn is-ghost mz-pill" onClick={() => { a.findSize(); a.focusInput(); }}>{c.aiSizeAskCta}</button>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function TheSet() {
+  const b = useBoutique();
+  const { c } = useShop();
+  const a = useConcierge();
+  const byRole = useMemo(() => accessoriesByRole(b.products), [b.products]);
+  const [occ, setOcc] = useState(a.occasion);
+  // The occasion she named in the conversation carries down to the board.
+  useEffect(() => setOcc(a.occasion), [a.occasion]);
+  const picks = useMemo(() => presetPicks(byRole, occ), [byRole, occ]);
+  const g = a.garment;
+  const total = g ? lookTotal(g, picks, id => b.byId(id)) : 0;
+  const totalEl = useRef<HTMLElement>(null);
+  const shown = useRef(total);
+  // The total runs to its new value when the occasion changes.
+  useEffect(() => {
+    const el = totalEl.current;
+    if (!el) return;
+    const ctl = animate(shown.current, total, { duration: 0.6, ease: EASE, onUpdate: v => { shown.current = v; el.textContent = b.price(Math.round(v)); } });
+    return () => ctl.stop();
+  }, [total, b]);
+  if (!g) return null;
+  const items = ACCESSORY_KINDS.map(k => ({ k, p: picks[k] ? b.byId(picks[k]) : undefined })).filter(x => x.p);
+  const photo = g.wornFront || g.front;
+  return (
+    <section id="set" className="ai-sec ai-set">
+      <div className="ai-wrap">
+        <motion.div className="ai-set__head" {...reveal}>
+          <div className="ai-copy">
+            <p className="ai-eyebrow">{c.aiSetK}</p>
+            <SplitReveal className="ai-h2" text={c.aiSetT} />
+            <p className="ai-body">{c.aiSetB}</p>
+          </div>
+          <div className="ai-occ" role="group" aria-label={c.aiSetOccasion}>
+            {b.t.occ.map((l, i) => <button key={l} type="button" className="mz-reset" aria-pressed={occ === i} onClick={() => setOcc(i)}>{l}</button>)}
+          </div>
+        </motion.div>
+        <div className="ai-board">
+          <motion.div className="ai-board__model" style={{ background: cardBg(g.colors[0]?.hex) }} {...reveal}>
+            {photo && <img src={photo} alt={`${c.wearing} ${b.tx(g.name)}`} loading="lazy" decoding="async" draggable={false} />}
+          </motion.div>
+          <ul className="ai-board__items">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {items.map(({ k, p }, i) => (
+                <motion.li key={p!.id} layout initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ ...SPRING.soft, delay: i * 0.05 }}>
+                  <button type="button" className="mz-reset ai-item" onClick={() => b.openProduct(p!.id)}>
+                    <span className="ai-item__pic">{p!.front && <img src={p!.front} alt="" loading="lazy" decoding="async" />}</span>
+                    <span className="ai-item__role">{b.t.roles[k]}</span>
+                    <span className="ai-item__name">{b.tx(p!.name)}</span>
+                    <span className="ai-item__price">{b.price(effectivePrice(p!))}</span>
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </div>
+        <div className="ai-set__foot">
+          <p className="ai-total is-big"><span>{c.aiTotal}</span><strong ref={totalEl}>{b.price(total)}</strong></p>
+          <div className="ai-ctas">
+            <button type="button" className="mz-reset mz-btn is-main mz-pill" onClick={() => a.addLook(picks)}><Icon name="bag" size={20} />{c.aiAddLook}</button>
+            <Link href={`/stylist?g=${encodeURIComponent(g.id)}`} className="mz-btn mz-pill is-line">{c.aiSetAsk}</Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Browse() {
   const b = useBoutique();
   const { c } = useShop();
   return (
-    <section id="collection" className="mz-collection">
-      <div className="mz-wrap">
-        <motion.div className="mz-head" {...reveal}>
-          <div>
-            <p className="mz-eyebrow">{c.colEyebrow}</p>
-            <SplitReveal className="mz-h2" text={c.colTitle} />
-          </div>
-          <p className="mz-hint"><Icon name="turn" size={18} /><span className="mz-hover-only">{c.hoverHint}</span><span className="mz-touch-only">{c.tapHint}</span></p>
+    <section className="ai-sec ai-browse">
+      <div className="ai-wrap">
+        <motion.div className="ai-browse__head" {...reveal}>
+          <SplitReveal className="ai-h2" text={c.aiColT} />
+          <Link href="/collection" className="mz-link is-main">{c.aiColAll}<Icon name="next" size={18} /></Link>
         </motion.div>
         <div className="mz-grid">
-          {b.garments.map((g, i) => (
-            <motion.div key={g.id} initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ ...SPRING.soft, delay: (i % 4) * 0.07 }}>
+          {b.garments.slice(0, 4).map((g, i) => (
+            <motion.div key={g.id} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ ...SPRING.soft, delay: i * 0.07 }}>
               <FlipCard g={g} />
             </motion.div>
           ))}
@@ -156,200 +312,53 @@ function Collection() {
   );
 }
 
-/** The brass rail: each abaya hangs side-on (74°) and turns to show its back (180°) on hover or tap; on a wide
- *  screen the pieces also turn one after another as the rail scrolls past. Focus names the piece in the caption. */
-/** How far (px) the 1st, 2nd and 3rd neighbours step aside from a turning garment. */
-const NUDGE = [62, 26, 10];
-
-function Rack() {
+function Close() {
   const b = useBoutique();
   const { c } = useShop();
-  const [hover, setHover] = useState<string | null>(null);
-  const [turned, setTurned] = useState<Record<string, boolean>>({});
-  const [active, setActive] = useState<string | null>(null);
-  const [wave, setWave] = useState<string | null>(null);
-  const section = useRef<HTMLElement>(null);
-  const rail = railOrder(b.garments);
-  const ids = rail.map(g => g.id).join(',');
-  useScrollScene(section, root => {
-    const list = ids.split(','), stage = root.querySelector('.mz-rack__stage');
-    gsap.matchMedia().add('(min-width: 901px) and (hover: hover)', () => {
-      const t = ScrollTrigger.create({
-        trigger: stage, start: 'top 62%', end: 'bottom 38%',
-        onUpdate: self => { const id = list[Math.min(list.length - 1, Math.floor(self.progress * list.length))]; setWave(id); setActive(id); },
-        onLeave: () => setWave(null), onLeaveBack: () => setWave(null),
-      });
-      return () => t.kill();
-    });
-  }, [ids]);
-  const shown = b.byId(active);
-  // A garment turned by tap or keyboard holds the stage; the scroll wave only leads when nothing is turned.
-  const turnedId = rail.find(g => turned[g.id])?.id ?? null;
-  const lead = hover ?? turnedId ?? wave;
-  const focus = rail.findIndex(g => g.id === lead);
-  // Phones hang the garments closer together, so neighbours step further aside.
-  const [nudge, setNudge] = useState(1);
+  const a = useConcierge();
+  const [v, setV] = useState('');
+  const facts: { icon: IconName; text: string }[] = [
+    { icon: 'lock', text: c.aiFact1 },
+    { icon: 'ruler', text: c.aiFact2 },
+    { icon: 'send', text: fill(c.aiFact3, { city: b.tx(b.settings.originCity) }) },
+  ];
+  return (
+    <section id="ask" className="ai-sec ai-close">
+      <motion.div className="ai-close__in" {...reveal}>
+        <SplitReveal className="ai-h2" text={c.aiCloseT} />
+        <form className="ai-input is-large" onSubmit={e => { e.preventDefault(); const t = v.trim(); if (!t) return; setV(''); a.ask(t); a.focusInput(); }}>
+          <input value={v} maxLength={400} autoComplete="off" aria-label={c.aiPlaceholder} placeholder={c.aiPlaceholder} onChange={e => setV(e.target.value)} />
+          <button type="submit" className="mz-reset ai-send" aria-label={c.aiSend} disabled={!v.trim()}><Icon name="send" size={20} /></button>
+        </form>
+        <ul className="ai-facts">
+          {facts.map(f => <li key={f.text}><Icon name={f.icon} size={18} />{f.text}</li>)}
+        </ul>
+      </motion.div>
+    </section>
+  );
+}
+
+/** Past the hero the stylist stays one tap away; the closing section has its own field, so the dock steps aside there. */
+function Dock() {
+  const { c } = useShop();
+  const a = useConcierge();
+  const [hidden, setHidden] = useState(true);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 900px)');
-    const on = () => setNudge(mq.matches ? 1.5 : 1);
-    on(); mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
+    const seen = new Map<Element, boolean>();
+    const io = new IntersectionObserver(es => {
+      es.forEach(e => seen.set(e.target, e.isIntersecting));
+      setHidden([...seen.values()].some(Boolean));
+    }, { threshold: 0.12 });
+    for (const id of ['talk', 'ask']) { const el = document.getElementById(id); if (el) io.observe(el); }
+    return () => io.disconnect();
   }, []);
   return (
-    <section ref={section} id="rack" className="mz-rack">
-      <span className="mz-rack__lamp" aria-hidden="true" />
-      <div className="mz-wrap mz-rack__in">
-        <motion.div className="mz-head is-centred" {...reveal}>
-          <p className="mz-eyebrow">{c.rackEyebrow}</p>
-          <SplitReveal className="mz-h2" text={c.rackTitle} />
-          <p className="mz-hint"><Icon name="turn" size={18} className="mz-hover-only" /><Icon name="swipe" size={18} className="mz-touch-only" />
-            <span className="mz-hover-only">{c.rackHoverHint}</span><span className="mz-touch-only">{c.rackTapHint}</span></p>
-        </motion.div>
-        <div className="mz-rack__scroll">
-          <div className="mz-rack__stage" style={{ '--n': rail.length } as React.CSSProperties}>
-            <span className="mz-rack__post is-start" aria-hidden="true" />
-            <span className="mz-rack__post is-end" aria-hidden="true" />
-            <span className="mz-rack__rail" aria-hidden="true" />
-            <span className="mz-rack__finial is-start" aria-hidden="true" />
-            <span className="mz-rack__finial is-end" aria-hidden="true" />
-            <span className="mz-rack__floor" aria-hidden="true" />
-            <div className="mz-rack__row">
-              {rail.map((g, i) => {
-                const on = lead === g.id || !!turned[g.id];
-                const name = b.tx(g.name);
-                // Neighbours ease aside from the garment that turns, so its open front never covers them.
-                const gap = focus < 0 || i === focus ? 0 : Math.sign(i - focus) * (NUDGE[Math.abs(i - focus) - 1] ?? 0) * nudge * (b.dir === 'rtl' ? -1 : 1);
-                return (
-                  <motion.button key={g.id} type="button" className={`mz-reset mz-hang${on ? ' is-on' : ''}`} aria-pressed={!!turned[g.id]} aria-label={`${c.turnLabel} ${name}`}
-                    initial={false} animate={{ x: gap }} transition={{ type: 'spring', stiffness: 70, damping: 17 }}
-                    onPointerEnter={e => { if (e.pointerType === 'mouse') { setHover(g.id); setActive(g.id); } }}
-                    onPointerLeave={e => { if (e.pointerType === 'mouse') setHover(h => (h === g.id ? null : h)); }}
-                    onFocus={() => setActive(g.id)}
-                    onClick={() => { setActive(g.id); setTurned(t => ({ [g.id]: !t[g.id] })); }}>
-                    <span className="mz-hang__light" aria-hidden="true" />
-                    <motion.span className="mz-hang__shadow" aria-hidden="true" initial={false} animate={{ scaleX: on ? 1 : 0.42, opacity: on ? 0.9 : 0.6 }} transition={SPRING.rack} />
-                    <span className="mz-sway" style={{ animationDelay: `${-i * 0.9}s` }}>
-                      <motion.span className="mz-hang__turn" initial={false} animate={{ rotateY: on ? 180 : 74 }} transition={SPRING.rack}>
-                        {(['f', 'b'] as const).map(side => (
-                          <span key={side} className={`mz-face is-hung${side === 'b' ? ' mz-back' : ''}`}>
-                            <svg aria-hidden="true" viewBox="0 0 280 110" fill="none" className="mz-hook">
-                              <path d="M140 52 V34 C140 29 148 28 148 20 A8 8 0 0 0 132 20" stroke="var(--rail-lo)" strokeWidth="2.2" strokeLinecap="round" />
-                            </svg>
-                            <span className="mz-hang__pic">{(side === 'f' ? g.front : g.back || g.front) && <img src={side === 'f' ? g.front : g.back || g.front} alt="" draggable={false} loading="lazy" decoding="async" />}</span>
-                          </span>
-                        ))}
-                      </motion.span>
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        <div className="mz-rack__caption" aria-live="polite">
-          <AnimatePresence mode="wait">
-            {shown && (
-              <motion.div key={shown.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={SPRING.soft}>
-                <p className="mz-rack__name">{b.tx(shown.name)}</p>
-                <p className="mz-rack__meta">
-                  {shown.colors[0] && <><span className="mz-only-wide-inline">{b.tx(shown.colors[0].name)}</span><span aria-hidden="true" className="mz-only-wide-inline">·</span></>}
-                  <span>{b.price(effectivePrice(shown))}</span><span aria-hidden="true">·</span>
-                  <Link href={productHref(shown.id)} className="mz-link is-main">{c.viewPiece}<Icon name="next" size={18} /></Link>
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/** Close-ups on the dark brand ground: three crops of the photographs drift at different depths as the page scrolls. */
-function Craft() {
-  const b = useBoutique();
-  const { c } = useShop();
-  const section = useRef<HTMLElement>(null);
-  useScrollScene(section, root => {
-    const st = { trigger: root, start: 'top bottom', end: 'bottom top', scrub: true };
-    gsap.fromTo(root.querySelector('.mz-craft__pic.is-a'), { y: 60 }, { y: -60, ease: 'none', scrollTrigger: st });
-    gsap.fromTo(root.querySelector('.mz-craft__pic.is-b'), { y: 140 }, { y: -140, ease: 'none', scrollTrigger: st });
-    gsap.fromTo(root.querySelector('.mz-craft__pic.is-c'), { y: 20 }, { y: -100, ease: 'none', scrollTrigger: st });
-  });
-  const alt = { a: b.lang === 'en' ? 'Gold embroidery' : b.lang === 'ar' ? 'تطريز ذهبي' : 'گلدوزی طلایی', b: b.lang === 'en' ? 'Lace hem' : b.lang === 'ar' ? 'حاشية دانتيل' : 'لبهٔ توری', c: b.lang === 'en' ? 'Pleats' : b.lang === 'ar' ? 'بليسيه' : 'پلیسه' };
-  return (
-    <section ref={section} className="mz-craft" aria-labelledby="mz-craft-h">
-      <div className="mz-wrap mz-craft__in">
-        <motion.div className="mz-craft__copy" {...reveal}>
-          <p className="mz-eyebrow is-gold">{c.craftEyebrow}</p>
-          <SplitReveal className="mz-h2 is-light" text={c.craftTitle} />
-          <span id="mz-craft-h" className="mz-sr">{c.craftTitle}</span>
-          <Ornament className="is-start" />
-          <p className="mz-craft__body">{c.craftBody}</p>
-          <a href="#collection" className="mz-link is-light">{c.craftLink}<Icon name="next" size={18} /></a>
-        </motion.div>
-        <div className="mz-craft__pics">
-          <figure className="mz-craft__pic is-a"><img src="/images/details/embroidery.webp" alt={alt.a} loading="lazy" /></figure>
-          <figure className="mz-craft__pic is-b"><img src="/images/details/lace.webp" alt={alt.b} loading="lazy" /></figure>
-          <figure className="mz-craft__pic is-c"><img src="/images/details/pleats.webp" alt={alt.c} loading="lazy" /></figure>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function TryTeaser() {
-  const b = useBoutique();
-  const { c, picks, togglePick } = useShop();
-  const icons: DuoIconName[] = ['yourPhoto', 'hanger', 'compare'];
-  const model = b.garments.find(g => g.front && isPale(g.colors[0]?.hex)) ?? b.garments[0];
-  const picked = picks.map(id => b.byId(id)).filter((g): g is Garment => !!g);
-  return (
-    <section id="tryon" className="mz-try">
-      <div className="mz-try__in">
-        <motion.div className="mz-try__copy" {...reveal}>
-          <p className="mz-eyebrow is-icon"><Icon name="hanger" size={20} />{c.tryEyebrow}</p>
-          <SplitReveal className="mz-h2 is-small" text={c.tryTitle} />
-          <p className="mz-body">{c.tryBody}</p>
-          <ol className="mz-steps">
-            {c.trySteps.map((s, i) => (
-              <motion.li key={s} initial={{ opacity: 0, x: b.dir === 'rtl' ? 16 : -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ ...SPRING.soft, delay: 0.1 * i }}>
-                <span className="mz-chip"><Icon name={icons[i]} weight="duotone" /></span><span className="mz-steps__n">{num(i + 1, b.lang)}</span>{s}
-              </motion.li>
-            ))}
-          </ol>
-          <div><Link href="/fitting-room" className="mz-btn is-main">{c.openRoom}<Icon name="next" size={20} className="mz-arrow" /></Link></div>
-          <div className="mz-picks">
-            <p>{c.yourPicks} · {num(picked.length, b.lang)}</p>
-            <div className="mz-picks__row">
-              <AnimatePresence>
-                {picked.map(g => (
-                  <motion.button key={g.id} type="button" className="mz-reset mz-picks__item" aria-label={`${c.remove} ${b.tx(g.name)}`} title={`${c.remove} ${b.tx(g.name)}`} onClick={() => togglePick(g.id)}
-                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={SPRING.soft} layout>
-                    {g.front && <img src={g.front} alt="" loading="lazy" decoding="async" />}
-                  </motion.button>
-                ))}
-              </AnimatePresence>
-              {picked.length === 0 && <span className="mz-picks__empty"><Icon name="hanger" size={18} />{c.tapHanger}</span>}
-            </div>
-          </div>
-        </motion.div>
-        <motion.div className="mz-try__visual" {...reveal}>
-          <div className="mz-try__col">
-            <div className="mz-try__photo"><Icon name="person" className="is-big" /><Icon name="yourPhoto" /></div>
-            <span>{c.yourPhoto}</span>
-          </div>
-          <span className="mz-try__arrow" aria-hidden="true"><Icon name="next" /></span>
-          <div className="mz-try__col">
-            <motion.div className="mz-try__result" role="img" aria-label={model ? `${c.wearing} ${b.tx(model.name)}` : c.preview}
-              whileHover={{ y: -6, rotateY: b.dir === 'rtl' ? 6 : -6 }} transition={SPRING.soft}>
-              <span className="mz-try__head" /><span className="mz-try__neck" />
-              {model?.front && <img src={model.front} alt="" loading="lazy" decoding="async" />}
-            </motion.div>
-            <span className="is-ink">{c.preview}</span>
-          </div>
-        </motion.div>
-      </div>
-    </section>
+    <AnimatePresence>
+      {!hidden && !a.scanning && (
+        <motion.button type="button" className="mz-reset ai-dock" onClick={a.focusInput} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={SPRING.soft} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
+          <Icon name="chat" size={20} />{c.aiDock}
+        </motion.button>
+      )}
+    </AnimatePresence>
   );
 }

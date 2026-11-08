@@ -61,7 +61,7 @@ function Lines({ onCheckout }: { onCheckout: () => void }) {
         {b.bag.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 40 }}>
             <p style={{ margin: 0, fontSize: 18, fontStyle: 'italic' }}>{t.empty}</p>
-            <a className="tlink u" href="/#rack" onClick={() => b.openSheet(null)} style={{ alignSelf: 'flex-start' }}>{t.browse}</a>
+            <a className="tlink u" href="/collection#rack" onClick={() => b.openSheet(null)} style={{ alignSelf: 'flex-start' }}>{t.browse}</a>
           </div>
         )}
         {b.bag.map((l, i) => {

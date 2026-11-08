@@ -24,6 +24,8 @@ export interface SizeInputs {
 }
 export interface SizeRecommendation {
   size: string;
+  /** The size she should wear; differs from `size` when that one is sold out and the nearest in stock replaced it. */
+  wanted: string;
   /** cm of room at the bust, when a bust measurement was given. */
   ease: number | null;
   /** How the hem falls for this height. */
@@ -32,8 +34,8 @@ export interface SizeRecommendation {
 
 const idx = (s: string) => (SIZE_ORDER as readonly string[]).indexOf(s);
 
-/** The design's size assistant: usual size and fit preference, or the bust measurement when given,
- *  then the nearest size in stock. Guidance only; never derived from a photo. */
+/** The design's size assistant: usual size and fit preference, or the bust measurement when given (typed in, or
+ *  estimated on the device by the camera scan in lib/body-scan.ts), then the nearest size in stock. Guidance only. */
 export function recommendSize(inp: SizeInputs, g: Pick<Garment, 'sizes' | 'chart' | 'shape'>): SizeRecommendation | null {
   const available = g.sizes.filter(s => s.ok && idx(s.n) >= 0).map(s => s.n).sort((a, b) => idx(a) - idx(b));
   if (!available.length) return null;
@@ -42,14 +44,15 @@ export function recommendSize(inp: SizeInputs, g: Pick<Garment, 'sizes' | 'chart
   let i = Math.max(0, idx(inp.usual));
   if (inp.bust > 0) {
     const allow = { fitted: 2, regular: 6, relaxed: 12 }[inp.fit];
-    i = SIZE_ORDER.findIndex(k => (DEFAULT_CHART[k]?.bust ?? 0) >= inp.bust + allow - 6);
+    i = SIZE_ORDER.findIndex(k => bustOf(k) >= inp.bust + allow - 6);
     if (i < 0) i = SIZE_ORDER.length - 1;
   } else {
     if (inp.fit === 'relaxed') i += 1;
     if (inp.fit === 'fitted' && (g.shape === 'abaya' || g.shape === 'kaftan')) i -= 1;
   }
   i = Math.max(0, Math.min(SIZE_ORDER.length - 1, i));
-  let size: string = SIZE_ORDER[i];
+  const wanted: string = SIZE_ORDER[i];
+  let size = wanted;
   if (!available.includes(size)) {
     const last = available[available.length - 1];
     size = idx(size) > idx(last) ? last : available.find(s => idx(s) >= i) ?? available[0];
@@ -57,6 +60,7 @@ export function recommendSize(inp: SizeInputs, g: Pick<Garment, 'sizes' | 'chart
   const h = inp.height > 0 ? inp.height : 165;
   return {
     size,
+    wanted,
     ease: inp.bust > 0 ? Math.round(bustOf(size) + 8 - inp.bust) : null,
     height: h >= 172 ? 'tall' : h < 158 ? 'short' : 'ok',
   };

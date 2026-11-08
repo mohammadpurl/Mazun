@@ -104,9 +104,11 @@ export function Header() {
 
   const home = path === '/' ? '' : '/';
   const nav = [
-    { href: `${home}#collection`, label: c.navNew },
-    { href: `${home}#collection`, label: c.navAbayas },
-    { href: `${home}#rack`, label: c.navRack },
+    { href: `${home}#talk`, label: c.navTalk },
+    { href: `${home}#wear`, label: c.navWear },
+    { href: `${home}#size`, label: c.navSize },
+    { href: `${home}#set`, label: c.navSet },
+    { href: '/collection', label: c.navCollection },
   ];
   const bag = (
     <button type="button" className="mz-reset mz-icon-btn mz-bag" aria-label={`${c.bag} ${num(b.bagCount, b.lang)}`} onClick={() => b.openSheet('bag')}>
@@ -142,8 +144,7 @@ export function Header() {
       <header className={`mz-header${stuck ? ' is-stuck' : ''}`}>
         <button ref={menuBtn} type="button" className="mz-reset mz-icon-btn mz-only-compact" aria-label={c.menu} aria-expanded={menu} onClick={() => setMenu(true)}><Icon name="menu" /></button>
         <nav aria-label={c.menu} className="mz-nav mz-only-wide">
-          {nav.map(n => <Link key={n.label} href={n.href} className="mz-link">{n.label}</Link>)}
-          <Link href="/fitting-room" className="mz-link mz-nav__try"><Icon name="hanger" size={18} />{c.navTry}</Link>
+          {nav.map((n, i) => <Link key={n.label} href={n.href} className={`mz-link${i === 0 ? ' mz-nav__talk' : ''}`}>{i === 0 && <Icon name="chat" size={18} />}{n.label}</Link>)}
         </nav>
         <Wordmark />
         <div className="mz-tools">
@@ -167,7 +168,7 @@ export function Header() {
               <button type="button" className="mz-reset mz-icon-btn" aria-label={c.close} autoFocus onClick={() => setMenu(false)}><Icon name="close" /></button>
             </div>
             <nav aria-label={c.menu} className="mz-menu__nav">
-              {[...nav, { href: '/fitting-room', label: c.navTry }].map((n, i) => (
+              {nav.map((n, i) => (
                 <motion.div key={n.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.soft, delay: 0.05 * i }}>
                   <Link href={n.href} onClick={() => setMenu(false)}>{n.label}</Link>
                 </motion.div>
@@ -233,8 +234,9 @@ export function Footer() {
           </div>
           <nav aria-label={c.footShop}>
             <span className="mz-footer__head">{c.footShop}</span>
-            <Link href={`${home}#collection`} className="mz-link">{c.navAbayas}</Link>
-            <Link href={`${home}#rack`} className="mz-link">{c.navRack}</Link>
+            <Link href={`${home}#talk`} className="mz-link">{c.navTalk}</Link>
+            <Link href="/collection" className="mz-link">{c.navCollection}</Link>
+            <Link href="/collection#rack" className="mz-link">{c.navRack}</Link>
             <Link href="/fitting-room" className="mz-link">{c.navTry}</Link>
           </nav>
           <nav aria-label={c.footHelp}>
