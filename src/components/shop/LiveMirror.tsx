@@ -9,7 +9,7 @@ import { LIVE_SECONDS } from '@/lib/live-tryon';
 import type { Garment } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { productHref } from './Chrome';
-import { trapTab } from './focus';
+import { lockScroll, trapTab } from './focus';
 import { useLiveAi } from './liveAi';
 import { Icon } from './Icon';
 import { createPoseTracker, type PoseLandmark, type PoseTracker } from './pose';
@@ -271,9 +271,8 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
       else trapTab(e, dialog.current);
     };
     document.addEventListener('keydown', key);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = overflow; prev?.focus?.(); };
+    const unlock = lockScroll();
+    return () => { document.removeEventListener('keydown', key); unlock(); prev?.focus?.(); };
   }, []);
 
   /** The picture as she saw it (mirrored, with the abaya), and the bare frame for the AI, mirrored the same way and

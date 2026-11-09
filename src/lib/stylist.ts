@@ -8,14 +8,15 @@ export type ByRole = Record<AccessoryKind, Garment[]>;
 
 export const OCCASION_COUNT = 5; // daytime, evening, Eid, wedding guest, office
 
-/** Index into each role's list (admin order) per occasion, from the design: the first piece of a role is
- *  the day choice, the second the evening one. Lists shorter than that wrap around. */
+/** Index into each role's list (admin order) per occasion: the first piece of a role is the day choice, the second the
+ *  evening one, and the later jewellery marks Eid, weddings and the office, so no two occasions give the same set. Lists
+ *  shorter than that wrap around. */
 const PRESETS: Record<AccessoryKind, number>[] = [
   { scarf: 0, bag: 0, jewel: 0, shoes: 0 },
   { scarf: 0, bag: 1, jewel: 1, shoes: 1 },
-  { scarf: 0, bag: 1, jewel: 1, shoes: 0 },
-  { scarf: 0, bag: 1, jewel: 1, shoes: 1 },
-  { scarf: 1, bag: 0, jewel: 0, shoes: 0 },
+  { scarf: 0, bag: 1, jewel: 2, shoes: 0 },
+  { scarf: 0, bag: 1, jewel: 3, shoes: 1 },
+  { scarf: 1, bag: 0, jewel: 3, shoes: 0 },
 ];
 
 /** Without AI, each suggestion chip maps to a look: an occasion preset or a fixed pick pattern. */
@@ -44,6 +45,30 @@ function fromPattern(byRole: ByRole, pattern: Record<AccessoryKind, number>): Pi
 
 export const presetPicks = (byRole: ByRole, occasion: number): Picks =>
   fromPattern(byRole, PRESETS[((occasion % OCCASION_COUNT) + OCCASION_COUNT) % OCCASION_COUNT]);
+
+const rgb = (hex: string | undefined) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex ?? '');
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [n >> 16, (n >> 8) & 255, n & 255];
+};
+const gap = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+const OFFICE = 4;
+
+/** The set for one garment: bag, jewellery and shoes by occasion, and the shayla closest to the garment's own colour,
+ *  except at the office, where the plain everyday shayla stands. */
+export function setFor(byRole: ByRole, garment: Pick<Garment, 'colors'>, occasion: number): Picks {
+  const picks = presetPicks(byRole, occasion);
+  const base = rgb(garment.colors[0]?.hex);
+  if (!base || occasion === OFFICE) return picks;
+  let best = Infinity;
+  for (const s of byRole.scarf) {
+    const c = rgb(s.colors[0]?.hex);
+    if (c && gap(base, c) < best) { best = gap(base, c); picks.scarf = s.id; }
+  }
+  return picks;
+}
 
 export const chipPicks = (byRole: ByRole, chip: number): { picks: Picks; occasion?: number } => {
   const c = CHIP_LOOKS[chip % CHIP_LOOKS.length];

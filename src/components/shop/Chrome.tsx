@@ -7,8 +7,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { shopChatLink } from '@/lib/order-message';
 import { LANGS, type Lang } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
+import { useOpenChat } from './concierge/useConcierge';
 import { Ornament } from './fx';
-import { trapTab } from './focus';
+import { lockScroll, trapTab } from './focus';
 import { Icon } from './Icon';
 import { useShop } from './Shop';
 import { EASE, SPRING, THEME_KEYS, THEMES, num } from './tokens';
@@ -104,11 +105,11 @@ export function Header() {
 
   const home = path === '/' ? '' : '/';
   const nav = [
-    { href: `${home}#talk`, label: c.navTalk },
+    { href: '/collection', label: c.navCollection },
+    { href: `${home}#rack`, label: c.navRack },
     { href: `${home}#wear`, label: c.navWear },
     { href: `${home}#size`, label: c.navSize },
     { href: `${home}#set`, label: c.navSet },
-    { href: '/collection', label: c.navCollection },
   ];
   const bag = (
     <button type="button" className="mz-reset mz-icon-btn mz-bag" aria-label={`${c.bag} ${num(b.bagCount, b.lang)}`} onClick={() => b.openSheet('bag')}>
@@ -128,11 +129,10 @@ export function Header() {
   };
   useEffect(() => {
     if (!menu) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const key = (e: KeyboardEvent) => { if (e.defaultPrevented) return; if (e.key === 'Escape') setMenu(false); trapTab(e, menuBox.current); };
     document.addEventListener('keydown', key);
-    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', key); if (restoreFocus.current) menuBtn.current?.focus(); restoreFocus.current = true; };
+    return () => { unlock(); document.removeEventListener('keydown', key); if (restoreFocus.current) menuBtn.current?.focus(); restoreFocus.current = true; };
   }, [menu]);
 
   return (
@@ -144,7 +144,7 @@ export function Header() {
       <header className={`mz-header${stuck ? ' is-stuck' : ''}`}>
         <button ref={menuBtn} type="button" className="mz-reset mz-icon-btn mz-only-compact" aria-label={c.menu} aria-expanded={menu} onClick={() => setMenu(true)}><Icon name="menu" /></button>
         <nav aria-label={c.menu} className="mz-nav mz-only-wide">
-          {nav.map((n, i) => <Link key={n.label} href={n.href} className={`mz-link${i === 0 ? ' mz-nav__talk' : ''}`}>{i === 0 && <Icon name="chat" size={18} />}{n.label}</Link>)}
+          {nav.map(n => <Link key={n.label} href={n.href} className="mz-link">{n.label}</Link>)}
         </nav>
         <Wordmark />
         <div className="mz-tools">
@@ -219,6 +219,7 @@ export function Footer() {
   const b = useBoutique();
   const { c } = useShop();
   const path = usePathname();
+  const openChat = useOpenChat();
   const home = path === '/' ? '' : '/';
   const chat = shopChatLink(b.settings, '');
   const insta = b.settings.instagram ? `https://instagram.com/${b.settings.instagram.replace(/^@/, '')}` : null;
@@ -234,9 +235,9 @@ export function Footer() {
           </div>
           <nav aria-label={c.footShop}>
             <span className="mz-footer__head">{c.footShop}</span>
-            <Link href={`${home}#talk`} className="mz-link">{c.navTalk}</Link>
+            {path !== '/stylist' && <button type="button" className="mz-reset mz-link" onClick={() => openChat()}>{c.navTalk}</button>}
             <Link href="/collection" className="mz-link">{c.navCollection}</Link>
-            <Link href="/collection#rack" className="mz-link">{c.navRack}</Link>
+            <Link href={`${home}#rack`} className="mz-link">{c.navRack}</Link>
             <Link href="/fitting-room" className="mz-link">{c.navTry}</Link>
           </nav>
           <nav aria-label={c.footHelp}>

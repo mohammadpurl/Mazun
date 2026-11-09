@@ -115,7 +115,7 @@ export function SettingsPage({ initial, garments }: { initial: Settings; garment
 
           <Reveal className="card stack" id="home" style={{ scrollMarginTop: 104 }}>
             {head('home', 'صفحهٔ اصلی', 'تا عکسی گذاشته نشود جای آن رنگ ملایم نشان داده می‌شود؛ عکس مجموعه‌ها در بخش «مجموعه‌ها» است', 'home')}
-            <Field label="لباس معرفی‌شده در گفتگوی صفحهٔ اصلی">{(id, d) => (
+            <Field label="لباس معرفی‌شده در عکس اصلی و گفتگو">{(id, d) => (
               <div style={{ maxWidth: 420 }}>
                 <Dropdown id={id} describedBy={d} searchable value={s.home.featuredId ?? ''} onChange={v => setHome({ featuredId: v || null })}
                   options={[{ value: '', label: 'اولین لباس رگال' }, ...garments.filter(g => g.kind === 'garment').map(g => ({ value: g.id, label: g.name.fa || g.name.en, swatch: g.colors[0]?.hex }))]} />
