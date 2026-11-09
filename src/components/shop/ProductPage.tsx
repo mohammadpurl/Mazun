@@ -106,7 +106,7 @@ function Product({ g }: { g: Garment }) {
       <div className="mz-wrap">
         <nav aria-label={c.breadcrumb} className="mz-crumbs">
           <Link href="/" className="mz-link">{c.home}</Link><Icon name="caret" size={16} />
-          <Link href="/#collection" className="mz-link">{category ? b.tx(category.name) : c.navAbayas}</Link><Icon name="caret" size={16} />
+          <Link href="/collection" className="mz-link">{category ? b.tx(category.name) : c.navAbayas}</Link><Icon name="caret" size={16} />
           <span aria-current="page">{name}</span>
         </nav>
 
@@ -189,6 +189,11 @@ function Product({ g }: { g: Garment }) {
               <Link href={`/fitting-room?g=${encodeURIComponent(g.id)}`} className="mz-cardlink">
                 <span className="mz-chip"><Icon name="hanger" weight="duotone" /></span>
                 <span className="mz-cardlink__text"><span>{c.tryLink}</span><span>{c.trySub}</span></span>
+                <Icon name="next" size={20} className="mz-arrow" />
+              </Link>
+              <Link href="/#talk" className="mz-cardlink">
+                <span className="mz-chip"><Icon name="chat" /></span>
+                <span className="mz-cardlink__text"><span>{c.aiDock}</span><span>{c.aiDockSub}</span></span>
                 <Icon name="next" size={20} className="mz-arrow" />
               </Link>
             </motion.div>

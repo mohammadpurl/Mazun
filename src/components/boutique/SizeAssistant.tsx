@@ -7,7 +7,7 @@ import { Art } from './Art';
 import { Sheet, useBoutique } from './Boutique';
 
 /** Size assistant: opens over the product (or the fitting room) without losing it. Input -> recommendation.
- *  Pure logic in lib/fit.ts; never derived from a photo. */
+ *  Pure logic in lib/fit.ts. The camera measurement lives in the home page's concierge (BodyScan). */
 export function SizeAssistant() {
   const b = useBoutique();
   const close = useCallback(() => b.openSize(null), [b]);
@@ -75,7 +75,7 @@ function Body({ garmentId, onUse, onClose }: { garmentId: string; onUse: (s: str
           </div>
           <button type="button" className="btn block" onClick={() => setStep('result')}>{t.recommend}</button>
           <p style={{ margin: 0, fontSize: 13, color: 'rgba(41,35,31,.7)', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Icon name="noCamera" size={18} />{t.noPhoto}
+            <Icon name="lock" size={18} />{t.noPhoto}
           </p>
         </div>
       ) : !rec ? (

@@ -45,3 +45,14 @@ test('effectivePrice uses the sale price only when it is lower', () => {
   assert.equal(effectivePrice({ price: 50, salePrice: 40 }), 40);
   assert.equal(effectivePrice({ price: 50, salePrice: 60 }), 50);
 });
+
+test('recommendSize says when the size she needs was sold out', () => {
+  const r = recommendSize(inp(), g('XS,S,L,XL'))!;
+  assert.equal(r.wanted, 'M');
+  assert.notEqual(r.size, 'M');
+});
+
+test('a measured bust is read against the piece own chart', () => {
+  const piece = { ...g(), chart: { S: { bust: 96 } } } as Parameters<typeof recommendSize>[1];
+  assert.equal(recommendSize(inp({ bust: 94 }), piece)!.size, 'S');
+});
