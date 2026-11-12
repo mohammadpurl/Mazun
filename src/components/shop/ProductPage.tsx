@@ -7,6 +7,7 @@ import { effectivePrice } from '@/lib/fit';
 import type { Garment } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { InfoDialog } from './Chrome';
+import { useOpenChat } from './concierge/useConcierge';
 import { FlipCard } from './FlipCard';
 import { Icon, type IconName } from './Icon';
 import { useShop } from './Shop';
@@ -67,6 +68,7 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
 
 function Product({ g }: { g: Garment }) {
   const b = useBoutique();
+  const openChat = useOpenChat();
   const { c } = useShop();
   const category = b.categories.find(x => x.id === g.categoryId);
   const sizeLabel = (n: string) => (n === ONE_SIZE ? b.t.oneSize : n);
@@ -191,11 +193,11 @@ function Product({ g }: { g: Garment }) {
                 <span className="mz-cardlink__text"><span>{c.tryLink}</span><span>{c.trySub}</span></span>
                 <Icon name="next" size={20} className="mz-arrow" />
               </Link>
-              <Link href="/#talk" className="mz-cardlink">
+              <button type="button" className="mz-reset mz-cardlink" onClick={() => openChat(g.id)}>
                 <span className="mz-chip"><Icon name="chat" /></span>
-                <span className="mz-cardlink__text"><span>{c.aiDock}</span><span>{c.aiDockSub}</span></span>
+                <span className="mz-cardlink__text"><span>{c.aiDockPiece}</span><span>{c.aiDockSub}</span></span>
                 <Icon name="next" size={20} className="mz-arrow" />
-              </Link>
+              </button>
             </motion.div>
             <motion.div className="mz-pd__accs" {...rise(4)}>
               <Accordion title={c.description}>{b.tx(g.description) || c.descBody}</Accordion>

@@ -5,11 +5,12 @@ import { SCAN_FRAMES, estimateBust, readFrame, type Hint } from '@/lib/body-scan
 import { latinDigits } from '@/lib/concierge';
 import type { SizeInputs } from '@/lib/fit';
 import { useBoutique } from '../../boutique/Boutique';
-import { trapTab } from '../focus';
+import { lockScroll, trapTab } from '../focus';
 import { Icon } from '../Icon';
 import { createPoseTracker, type PoseTracker } from '../pose';
 import { useShop } from '../Shop';
 import { SPRING, num } from '../tokens';
+import { useBackCloses } from './useBackCloses';
 import { useConcierge, type SizeResult } from './useConcierge';
 
 /* Size from the camera: she gives her height, stands back, and pose landmarks found in the browser give the proportions.
@@ -36,22 +37,34 @@ function Dialog() {
   const box = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const cm = useRef(0);
-  const { setScanning } = a;
+  const { setScanning, inputRef } = a;
   const close = useCallback(() => setScanning(false), [setScanning]);
+  useBackCloses(true, close, 'mzScan');
 
   useEffect(() => {
     const back = document.activeElement as HTMLElement | null;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    (box.current?.querySelector('input') ?? box.current)?.focus();
+    const unlock = lockScroll();
+    const el = box.current;
+    (el?.querySelector('input') ?? el)?.focus();
     const key = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       if (e.key === 'Escape') close();
       trapTab(e, box.current);
     };
     document.addEventListener('keydown', key);
-    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', key); back?.focus?.(); };
-  }, [close]);
+    return () => {
+      unlock();
+      document.removeEventListener('keydown', key);
+      // Not if the chat has taken the focus in the meantime.
+      const at = document.activeElement;
+      // The button that opened it may have gone with the card it was on.
+      if (!at || at === document.body || el?.contains(at)) {
+        // On a touch screen the field would throw up the keyboard, so the chat itself takes the focus.
+        const chat = window.matchMedia('(hover: none)').matches ? document.querySelector<HTMLElement>('.ai-panel') : inputRef.current;
+        (back?.isConnected ? back : chat)?.focus?.();
+      }
+    };
+  }, [close, inputRef]);
 
   const start = () => {
     const n = Number(latinDigits(height));
@@ -161,7 +174,7 @@ function Dialog() {
           <p className="ai-scan__size" dir="ltr">{result.rec.size}</p>
           <p>{c.aiScanBust.replace('{bust}', num(result.inputs.bust, b.lang))}</p>
           <p className="ai-scan__note"><Icon name="info" size={18} />{c.aiScanNote}</p>
-          <button type="button" className="mz-btn is-light mz-pill" onClick={() => { close(); a.focusInput(); }}>{c.aiScanUse}<Icon name="next" size={20} className="mz-arrow" /></button>
+          <button type="button" className="mz-btn is-light mz-pill" onClick={() => { close(); a.openChat(); }}>{c.aiScanUse}<Icon name="next" size={20} className="mz-arrow" /></button>
           <button type="button" className="mz-reset mz-link ai-scan__again" onClick={start}>{c.aiScanAgain}</button>
         </motion.div>
       )}
@@ -170,7 +183,7 @@ function Dialog() {
         <div className="ai-scan__panel" role="alert">
           <span className="ai-scan__ic" aria-hidden="true"><Icon name="noCamera" size={40} /></span>
           <p>{phase === 'denied' ? c.liveDenied : c.aiScanFailed}</p>
-          <button type="button" className="mz-btn is-light mz-pill" onClick={() => { close(); a.findSize(); a.focusInput(); }}>{c.aiSizeAskCta}</button>
+          <button type="button" className="mz-btn is-light mz-pill" onClick={() => { close(); a.findSize(); a.openChat(); }}>{c.aiSizeAskCta}</button>
           {phase === 'denied' && <button type="button" className="mz-reset mz-link ai-scan__again" onClick={start}>{c.liveRetry}</button>}
         </div>
       )}

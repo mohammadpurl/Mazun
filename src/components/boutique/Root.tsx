@@ -2,6 +2,8 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Footer, Header } from '../shop/Chrome';
+import { ConciergeProvider } from '../shop/concierge/useConcierge';
+import { StylistDock } from '../shop/concierge/StylistDock';
 import { ShopProvider } from '../shop/Shop';
 import type { ThemeKey } from '../shop/tokens';
 import { useBoutique } from './Boutique';
@@ -10,8 +12,8 @@ import { useBoutique } from './Boutique';
  *  the 404 at any address included, uses the new design. */
 const LEGACY = (path: string) => path === '/stylist';
 
-/** The shop shell: the new header and footer on every page, the page itself, and the sheets (bag, sizes, product)
- *  which keep their .btq styles. `touch` marks devices without hover for the earlier pages. */
+/** The shop shell: the new header and footer on every page, the page itself, the floating stylist, and the sheets
+ *  (bag, sizes, product) which keep their .btq styles. `touch` marks devices without hover for the earlier pages. */
 export function Root({ children, overlays, theme }: { children: ReactNode; overlays: ReactNode; theme: ThemeKey }) {
   const { lang, dir } = useBoutique();
   const path = usePathname();
@@ -26,10 +28,13 @@ export function Root({ children, overlays, theme }: { children: ReactNode; overl
   const cls = `btq${touch ? ' touch' : ''}`;
   return (
     <ShopProvider initialTheme={theme}>
-      <Header />
-      {LEGACY(path) ? <div className={cls} lang={lang} dir={dir}>{children}</div> : children}
-      <Footer />
-      <div className={`${cls} btq-overlays`} lang={lang} dir={dir}>{overlays}</div>
+      <ConciergeProvider>
+        <Header />
+        {LEGACY(path) ? <div className={cls} lang={lang} dir={dir}>{children}</div> : children}
+        <Footer />
+        <div className={`${cls} btq-overlays`} lang={lang} dir={dir}>{overlays}</div>
+        <StylistDock />
+      </ConciergeProvider>
     </ShopProvider>
   );
 }

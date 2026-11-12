@@ -2,40 +2,63 @@
 /* eslint-disable @next/next/no-img-element -- transparent cut-outs from the catalogue */
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { fill, latinDigits } from '@/lib/concierge';
 import { SIZE_ORDER } from '@/lib/defaults';
 import { effectivePrice, type FitPref, type SizeInputs } from '@/lib/fit';
 import { shopChatLink } from '@/lib/order-message';
 import { lookTotal } from '@/lib/stylist';
-import { ACCESSORY_KINDS } from '@/lib/types';
+import { ACCESSORY_KINDS, type Garment } from '@/lib/types';
 import { useBoutique } from '../../boutique/Boutique';
 import { productHref } from '../Chrome';
-import { Icon } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import { useShop } from '../Shop';
 import { SPRING, num } from '../tokens';
+import { usePieceHere } from './usePieceHere';
 import { useConcierge, type Card, type Turn } from './useConcierge';
 
-function PieceCard() {
+function PieceLink({ g }: { g: Garment }) {
   const b = useBoutique();
+  return (
+    <Link href={productHref(g.id)} className="ai-piece">
+      <span className="ai-piece__pic">{(g.front || g.wornFront) && <img src={g.front || g.wornFront} alt="" loading="lazy" decoding="async" />}</span>
+      <span className="ai-piece__txt">
+        <span className="ai-piece__name">{b.tx(g.name)}</span>
+        <span className="ai-piece__price">{b.price(effectivePrice(g))}</span>
+      </span>
+      <Icon name="next" size={18} className="ai-piece__go" />
+    </Link>
+  );
+}
+
+/** The piece she did not choose herself, ahead of the size, set or try-on she asked for: all it needs is a way to change it. */
+function IntroCard() {
+  const { c } = useShop();
+  const a = useConcierge();
+  if (!a.garment) return null;
+  return (
+    <div className="ai-card">
+      <PieceLink g={a.garment} />
+      <div className="ai-acts">
+        <button type="button" className="mz-reset ai-act is-quiet" onClick={a.another}><Icon name="turn" size={18} />{c.aiActOther}</button>
+      </div>
+    </div>
+  );
+}
+
+function PieceCard() {
   const { c } = useShop();
   const a = useConcierge();
   const g = a.garment;
   if (!g) return null;
   return (
     <div className="ai-card">
-      <Link href={productHref(g.id)} className="ai-piece">
-        <span className="ai-piece__pic">{(g.front || g.wornFront) && <img src={g.front || g.wornFront} alt="" loading="lazy" decoding="async" />}</span>
-        <span className="ai-piece__txt">
-          <span className="ai-piece__name">{b.tx(g.name)}</span>
-          <span className="ai-piece__price">{b.price(effectivePrice(g))}</span>
-        </span>
-        <Icon name="next" size={18} className="ai-piece__go" />
-      </Link>
+      <PieceLink g={g} />
       <div className="ai-acts">
         <Link href={`/fitting-room?g=${encodeURIComponent(g.id)}`} className="ai-act is-main"><Icon name="yourPhoto" size={18} />{c.aiActTry}</Link>
         <button type="button" className="mz-reset ai-act" onClick={a.findSize}><Icon name="ruler" size={18} />{c.aiActSize}</button>
-        <button type="button" className="mz-reset ai-act" onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
+        <button type="button" className="mz-reset ai-act" disabled={a.busy} onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
         <button type="button" className="mz-reset ai-act is-quiet" onClick={a.another}><Icon name="turn" size={18} />{c.aiActOther}</button>
       </div>
     </div>
@@ -61,15 +84,15 @@ function SizeAsk() {
   const { c } = useShop();
   const a = useConcierge();
   const [height, setHeight] = useState(a.knownHeight ? String(a.knownHeight) : '');
-  const [usual, setUsual] = useState('M');
+  const [usual, setUsual] = useState('');
   const [fit, setFit] = useState<FitPref>('regular');
   const h = Number(latinDigits(height));
   const bad = height !== '' && (!(h >= 130) || h > 210);
   const sizes = SIZE_ORDER.filter(s => a.garment?.sizes.some(x => x.n === s) ?? true);
   const submit = () => {
-    if (bad) return;
+    if (bad || !usual) return;
     const inputs: SizeInputs = { height: h || 0, usual, fit, bust: 0, len: 'ankle' };
-    a.submitSize(inputs);
+    a.submitSize(inputs, false, h ? fill(c.aiMeHeight, { height: num(h, b.lang), usual }) : fill(c.aiMeUsual, { usual }));
   };
   return (
     <form className="ai-card ai-form" onSubmit={e => { e.preventDefault(); submit(); }}>
@@ -92,8 +115,9 @@ function SizeAsk() {
           ))}
         </div>
       </div>
+      {!usual && <p className="ai-note" id="ai-usual-note">{c.aiPickUsual}</p>}
       <div className="ai-acts">
-        <button type="submit" className="mz-reset ai-act is-main">{c.aiSizeSubmit}</button>
+        <button type="submit" className="mz-reset ai-act is-main" disabled={bad || !usual} aria-describedby={usual ? undefined : 'ai-usual-note'}>{c.aiSizeSubmit}</button>
         <button type="button" className="mz-reset ai-act" onClick={() => a.setScanning(true)}><Icon name="camera" size={18} />{c.aiScan}</button>
       </div>
     </form>
@@ -121,7 +145,7 @@ function SizeCard() {
         {rec.size !== rec.wanted && <button type="button" className="mz-reset ai-act is-main" onClick={a.another}><Icon name="turn" size={18} />{c.aiActOther}</button>}
         <button type="button" className={`mz-reset ai-act${rec.size === rec.wanted ? ' is-main' : ''}`} onClick={a.addSized}><Icon name="bag" size={18} />{c.aiAddSize}</button>
         <Link href={`/fitting-room?g=${encodeURIComponent(r.garmentId)}`} className="ai-act"><Icon name="yourPhoto" size={18} />{c.aiActTry}</Link>
-        <button type="button" className="mz-reset ai-act" onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
+        <button type="button" className="mz-reset ai-act" disabled={a.busy} onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
         <button type="button" className="mz-reset ai-act is-quiet" onClick={a.editSize}><Icon name="ruler" size={18} />{c.aiActEdit}</button>
       </div>
     </div>
@@ -147,16 +171,25 @@ function SetCard() {
   const b = useBoutique();
   const { c } = useShop();
   const a = useConcierge();
+  const path = usePathname();
   const g = a.garment;
   if (!g) return null;
-  const items = ACCESSORY_KINDS.map(k => (a.picks[k] ? b.byId(a.picks[k]) : undefined)).filter(x => !!x);
+  const rows = [
+    { role: b.t.foundation, p: g },
+    ...ACCESSORY_KINDS.flatMap(k => { const p = a.picks[k] ? b.byId(a.picks[k]) : undefined; return p ? [{ role: b.t.roles[k], p }] : []; }),
+  ];
   return (
     <div className="ai-card">
-      <ul className="ai-tiles">
-        {items.map(x => (
-          <li key={x.id}>
-            <button type="button" className="mz-reset ai-tile" aria-label={b.tx(x.name)} title={b.tx(x.name)} onClick={() => b.openProduct(x.id)}>
-              {x.front && <img src={x.front} alt="" loading="lazy" decoding="async" />}
+      <div className="ai-occ" role="group" aria-label={c.aiSetOccasion}>
+        {b.t.occ.map((l, i) => <button key={l} type="button" className="mz-reset" aria-pressed={a.occasion === i} disabled={a.busy} onClick={() => a.changeOccasion(i)}>{l}</button>)}
+      </div>
+      <ul className="ai-rows">
+        {rows.map(({ role, p }) => (
+          <li key={p.id}>
+            <button type="button" className="mz-reset ai-row" data-leaves={p.kind === 'garment' || undefined} disabled={path === productHref(p.id)} onClick={() => b.openProduct(p.id)}>
+              <span className="ai-row__pic">{p.front && <img src={p.front} alt="" loading="lazy" decoding="async" />}</span>
+              <span className="ai-row__txt"><span>{role}</span><span>{b.tx(p.name)}</span></span>
+              <span className="ai-row__price">{b.price(effectivePrice(p))}</span>
             </button>
           </li>
         ))}
@@ -164,13 +197,26 @@ function SetCard() {
       <p className="ai-total"><span>{c.aiTotal}</span><strong>{b.price(lookTotal(g, a.picks, id => b.byId(id)))}</strong></p>
       <div className="ai-acts">
         <button type="button" className="mz-reset ai-act is-main" onClick={() => a.addLook()}><Icon name="bag" size={18} />{c.aiAddLook}</button>
-        <Link href={`/stylist?g=${encodeURIComponent(g.id)}`} className="ai-act">{c.aiLookOpen}</Link>
       </div>
     </div>
   );
 }
 
-const CARDS: Record<Card, () => React.ReactNode> = { piece: PieceCard, tryon: TryCard, sizeAsk: SizeAsk, size: SizeCard, set: SetCard, human: HumanCard };
+/** Once something is in the bag, the way to it. */
+function AddedCard() {
+  const b = useBoutique();
+  const { c } = useShop();
+  const a = useConcierge();
+  return (
+    <div className="ai-card">
+      <div className="ai-acts">
+        <button type="button" className="mz-reset ai-act is-main" onClick={() => { a.closeChat(); b.openSheet('bag'); }}><Icon name="bag" size={18} />{c.aiViewBag}</button>
+      </div>
+    </div>
+  );
+}
+
+const CARDS: Record<Card, () => React.ReactNode> = { piece: PieceCard, intro: IntroCard, tryon: TryCard, sizeAsk: SizeAsk, size: SizeCard, set: SetCard, human: HumanCard, added: AddedCard };
 
 /** Only the latest card of a kind stays live; earlier ones would act on the current garment, not the one they showed. */
 const Bubble = memo(function Bubble({ t, showCard, count }: { t: Turn; showCard: boolean; count: number }) {
@@ -179,69 +225,79 @@ const Bubble = memo(function Bubble({ t, showCard, count }: { t: Turn; showCard:
   return (
     <motion.li className={`ai-msg${t.me ? ' is-me' : ''}`} layout="position" layoutDependency={count} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.soft}>
       <span className="mz-sr">{t.me ? c.aiYou : c.aiName}: </span>
-      <p className="ai-bubble">{t.text}</p>
+      <p className="ai-bubble" dir={t.me ? 'auto' : undefined}>{t.text}</p>
       {CardBody && <CardBody />}
     </motion.li>
   );
 });
 
-/** The message field. It alone follows the text, which the sample types letter by letter. */
+/** The message field, on its own so typing re-renders nothing else. */
 function Field() {
   const { c } = useShop();
   const a = useConcierge();
   const text = useSyncExternalStore(a.draft.subscribe, a.draft.get, () => '');
   return (
-    <form className="ai-input" onSubmit={e => { e.preventDefault(); if (!a.busy && !a.playing) a.ask(a.draft.get()); }}>
-      <input ref={a.inputRef} value={text} maxLength={400} autoComplete="off" aria-label={c.aiPlaceholder} placeholder={c.aiPlaceholder}
-        onFocus={() => { if (a.playing || a.sample) a.takeOver(); }} onChange={e => a.draft.set(e.target.value)} />
+    <form className="ai-input" onSubmit={e => { e.preventDefault(); if (!a.busy) a.ask(a.draft.get()); }}>
+      <input ref={a.inputRef} value={text} dir={text ? 'auto' : undefined} maxLength={400} autoComplete="off" aria-label={c.aiPlaceholder} placeholder={c.aiPlaceholder}
+        onChange={e => a.draft.set(e.target.value)} />
       <button type="submit" className="mz-reset ai-send" aria-label={c.aiSend} disabled={a.busy || !text.trim()}><Icon name="send" size={20} /></button>
     </form>
   );
 }
 
+const START_ICONS: IconName[] = ['hanger', 'ruler', 'handbag', 'yourPhoto'];
+
 export function Chat() {
   const { c } = useShop();
   const a = useConcierge();
-  const root = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLUListElement>(null);
+  const pieceHere = usePieceHere();
   const reduce = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
-  // Newest at the bottom, scrolling only the thread: the page itself never moves under the visitor. The last message
-  // is watched, because a card grows into place after the first scroll has already measured it.
+  const opened = useRef(false);
+  // Newest at the bottom. The last message is watched, because a card grows into place after the first scroll has
+  // already measured it, and so is the thread, because a phone's keyboard shrinks it.
   useEffect(() => {
     const el = box.current, last = el?.lastElementChild;
     if (!el || !last) return;
-    const down = () => el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' });
+    const down = () => el.scrollTo({ top: el.scrollHeight, behavior: reduce || !opened.current ? 'auto' : 'smooth' });
     down();
+    opened.current = true;
     const ro = new ResizeObserver(down);
     ro.observe(last);
+    ro.observe(el);
     return () => ro.disconnect();
   }, [a.turns.length, a.busy, reduce]);
   const lastOf = (card: Card) => a.turns.reduce((n, t) => (t.card === card ? t.id : n), -1);
   // Once the size is answered, the form that asked for it has done its work.
-  const showCard = (t: Turn) => !!t.card && lastOf(t.card) === t.id && !(t.card === 'sizeAsk' && lastOf('size') > t.id);
-  const touched = a.reached > 0 && !a.sample;
-  // On a phone the conversation takes the whole screen once she starts it.
-  useEffect(() => {
-    // Not when an earlier conversation was restored: she may have come for #size or #wear.
-    if (touched && !a.resumed && window.matchMedia('(max-width: 999px)').matches) root.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [touched, reduce]);
+  // Once it is in the bag, the card that offered to add it has too; leaving it would invite adding it twice.
+  // And a newer piece retires whatever was shown for the old one, which would otherwise quietly change under its caption.
+  const showCard = (t: Turn) => !!t.card && lastOf(t.card) === t.id && !(t.card === 'sizeAsk' && lastOf('size') > t.id)
+    && !((t.card === 'size' || t.card === 'set') && lastOf('added') > t.id)
+    && !((t.card === 'set' || t.card === 'tryon' || t.card === 'intro') && lastOf('piece') > t.id);
   return (
-    <div ref={root} className={`ai-chat${touched ? ' is-live' : ''}`} onPointerDownCapture={a.halt}>
+    <div className="ai-chat">
       <div className="ai-chat__head">
-        <span className="ai-avatar" aria-hidden="true"><Icon name="chat" size={18} /></span>
+        <span className="ai-avatar" dir="ltr" aria-hidden="true">AI</span>
         <span className="ai-chat__who">{c.aiName}</span>
-        {a.sample && (
-          <span className="ai-chat__sample">
-            {c.aiSample}
-            <button type="button" className="mz-reset" onClick={a.takeOver}>{c.aiSampleStop}</button>
-          </span>
-        )}
+        {a.reached > 0 && <button type="button" className="mz-reset mz-icon-btn ai-chat__new" aria-label={c.aiNew} title={c.aiNew} onClick={() => { a.restart(); a.openChat(pieceHere()); box.current?.focus({ preventScroll: true }); }}><Icon name="plus" size={20} /></button>}
+        <button type="button" className="mz-reset mz-icon-btn ai-chat__close" aria-label={c.close} onClick={a.closeChat}><Icon name="close" /></button>
       </div>
-      <ul ref={box} className={`ai-thread${scrolled ? ' is-scrolled' : ''}`} aria-label={c.aiThread} aria-live={a.playing ? 'off' : 'polite'} tabIndex={0}
+      <ul ref={box} className={`ai-thread${scrolled ? ' is-scrolled' : ''}`} aria-label={c.aiThread} aria-live="polite" tabIndex={0}
         onScroll={e => setScrolled(e.currentTarget.scrollTop > 4)}>
         {a.turns.map(t => <Bubble key={t.id} t={t} showCard={showCard(t)} count={a.turns.length} />)}
+        {a.reached === 0 && (
+          <li className="ai-msg">
+            <div className="ai-starts">
+              {c.aiStarts.map((t, i) => (
+                <motion.button key={t} type="button" className="mz-reset ai-start" disabled={a.busy} onClick={() => (i === 0 ? a.findPiece(t) : a.ask(t))}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.soft, delay: 0.1 + i * 0.06 }}>
+                  <Icon name={START_ICONS[i]} size={20} />{t}
+                </motion.button>
+              ))}
+            </div>
+          </li>
+        )}
         <AnimatePresence>
           {a.busy && (
             <motion.li key="typing" className="ai-msg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -250,9 +306,11 @@ export function Chat() {
           )}
         </AnimatePresence>
       </ul>
-      <div className="ai-chips">
-        {c.aiChips.map(t => <button key={t} type="button" className="mz-reset ai-chip" disabled={a.busy} onClick={() => a.ask(t)}>{t}</button>)}
-      </div>
+      {a.reached === 1 && !a.busy && (
+        <div className="ai-chips">
+          {c.aiChips.map(t => <button key={t} type="button" className="mz-reset ai-chip" disabled={a.busy} onClick={() => a.ask(t)}>{t}</button>)}
+        </div>
+      )}
       <Field />
     </div>
   );

@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { effectivePrice } from '@/lib/fit';
 import { formatPrice } from '@/lib/order-message';
 import { LANGS, type Category, type Garment, type L10n, type Lang, type Settings } from '@/lib/types';
-import { trapTab } from '../shop/focus';
+import { lockScroll, trapTab } from '../shop/focus';
 import { STRINGS, type Strings } from './i18n';
 
 export interface BagLine { id: string; c: number; s: string; q: number }
@@ -203,8 +203,7 @@ export function Sheet({ open, onClose, label, width, z = 60, children }: {
 
   useEffect(() => {
     if (!mounted || !open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return; // already handled inside, e.g. Escape closing the checkout's date picker
       const at = document.activeElement;
@@ -214,7 +213,7 @@ export function Sheet({ open, onClose, label, width, z = 60, children }: {
     };
     document.addEventListener('keydown', onKey);
     panel.current?.focus({ preventScroll: true });
-    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
+    return () => { unlock(); document.removeEventListener('keydown', onKey); };
   }, [mounted, open]);
 
   if (!mounted) return null;

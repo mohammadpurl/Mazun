@@ -1,6 +1,6 @@
 /* The concierge's built-in reading of a customer's message: what she asks for, the occasion, a colour, a budget and
-   any size details. It answers when the AI is not connected or fails, and scripts the sample conversation on the home
-   page, so the chat never dead-ends. Pure: shared by the shop UI and the tests. */
+   any size details. It answers when the AI is not connected or fails,
+   so the chat never dead-ends. Pure: shared by the shop UI and the tests. */
 import { effectivePrice, type FitPref, type SizeInputs } from './fit';
 import type { Garment } from './types';
 

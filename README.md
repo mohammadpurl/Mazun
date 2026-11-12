@@ -10,10 +10,11 @@ olive; Source Serif 4 / Noto Naskh Arabic; 2px radius).
 
 | Where | What it does |
 |---|---|
-| `/` | The AI stylist as a working conversation: it picks a garment from the catalogue, changes the photo beside it, finds the size in the chat or with the camera, and builds the set. Below it, one section each for try-on, size and the set |
-| `/collection` | Every piece as flip cards, then the brass rack |
+| `/` | The editorial hero and the brass rack, then one section each for try-on, size and the set |
+| AI stylist | A button floating on every shop page except `/stylist`, which has its own chat, opens the conversation: it picks a garment from the catalogue, finds the size in the chat or with the camera, sends her to try it on and builds the set. On a product page it starts with that piece |
+| `/collection` | Every piece as flip cards |
 | Camera sizing | She gives her height and stands back; pose landmarks found in the browser give shoulder and hip widths, from which a bust estimate picks a size (`src/lib/body-scan.ts`). No frame leaves the device; the result is always called an estimate |
-| The rack | Garments hang side-on on one rail; hover or keyboard focus turns a piece to its back and parts its neighbours; click opens a full-screen view that moves between pieces; drag or swipe when the rail overflows; on touch the first tap turns a piece and the second opens it; filters by collection and "New" |
+| The rack | On the home page. Garments hang side-on on one rail; hover, keyboard focus or a tap turns a piece to its back and parts its neighbours; the caption links to the piece and to the stylist; swipe when the rail overflows |
 | Product drawer (`?p=<id>`) | Front / back / detail, colours, sizes, stock line, add to bag, wishlist, try-on and stylist buttons, fabric and delivery |
 | Size assistant | Height, usual size, fit, length, optional measurements → a recommended size in stock with the size guide (`recommendSize` in `src/lib/fit.ts`) |
 | `/fitting-room` | Upload a full-length photo or a short video (one frame is used) → preview of the garment on the customer (Gemini), slider or side-by-side comparison; without a key, a simple overlay |
@@ -59,7 +60,7 @@ npm run build
 ### AI (fitting room and stylist)
 
 - `GEMINI_API_KEY` — virtual try-on on the customer's photo (`IMAGE_MODEL`, default `gemini-2.5-flash-image`).
-- `ANTHROPIC_API_KEY` — the home-page conversation and the stylist chat answer from your own catalogue (`CLAUDE_MODEL`, default `claude-opus-5-5`).
+- `ANTHROPIC_API_KEY` — the floating AI stylist and the stylist page's chat answer from your own catalogue (`CLAUDE_MODEL`, default `claude-opus-5-5`).
 
 Without them the shop uses built-in behaviour (overlay preview, preset looks, and a keyword reading of the customer's message in `src/lib/concierge.ts`). Each call costs money; `/api/ai` is
 rate-limited per visitor (in memory, per server instance). The server looks products up by id itself, and

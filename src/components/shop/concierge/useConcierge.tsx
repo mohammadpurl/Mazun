@@ -1,26 +1,24 @@
 'use client';
-/* The concierge's conversation: one shared state for the hero's chat, the stage photo and the sections below it.
-   A message goes to Claude when it is connected; if it is not, or the call fails, the built-in reading in
+/* The stylist's conversation: one shared state for the floating chat and the home page's sections, alive across the whole
+   shop. A message goes to Claude when it is connected; if it is not, or the call fails, the built-in reading in
    lib/concierge.ts answers, so the chat never dead-ends. The server only ever names products from the catalogue.
-   A real conversation is kept for the browser session, so a trip to the fitting room does not lose it. */
-import gsap from 'gsap';
-import { useReducedMotion } from 'motion/react';
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+   A real conversation is kept for the browser session, so a full reload does not lose it. */
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { familyOf, fill, pickGarment, readMessage, sizeInputs, type Intent, type SizeFacts } from '@/lib/concierge';
 import { effectivePrice, recommendSize, type SizeInputs, type SizeRecommendation } from '@/lib/fit';
-import { accessoriesByRole, presetPicks, type Picks } from '@/lib/stylist';
+import { accessoriesByRole, presetPicks, setFor, type Picks } from '@/lib/stylist';
 import { ACCESSORY_KINDS, type Garment } from '@/lib/types';
 import { useBoutique } from '../../boutique/Boutique';
 import { useShop } from '../Shop';
 import { num } from '../tokens';
 import { SAVE_KEY, readSaved, type Saved } from './saved';
 
-export type Card = 'piece' | 'tryon' | 'sizeAsk' | 'size' | 'set' | 'human';
+export type Card = 'piece' | 'intro' | 'tryon' | 'sizeAsk' | 'size' | 'set' | 'human' | 'added';
 export interface Turn { id: number; me: boolean; text: string; card?: Card }
 export interface SizeResult { garmentId: string; rec: SizeRecommendation; inputs: SizeInputs; scanned: boolean }
 interface Answer { reply?: string; note?: string; intent: Intent; garmentId: string | null; occasion: number | null; picks?: Picks; size?: SizeFacts }
 
-/** The text in the field lives outside React state: the sample types it letter by letter, and only the field should re-render. */
+/** The text in the field lives outside React state, so typing re-renders the field and not everything that reads the conversation. */
 function makeDraft() {
   let value = '';
   const subs = new Set<() => void>();
@@ -36,10 +34,6 @@ interface Ctx {
   turns: Turn[];
   draft: Draft;
   busy: boolean;
-  /** The sample conversation is on screen. */
-  sample: boolean;
-  /** The sample is playing by itself. */
-  playing: boolean;
   garment: Garment | undefined;
   occasion: number;
   picks: Picks;
@@ -48,47 +42,62 @@ interface Ctx {
   knownHeight: number;
   /** How far the journey has come: 0 nothing yet, 1 talked, 2 a piece chosen, 3 sized, 4 set. */
   reached: number;
-  /** The conversation was brought back from earlier in the session, rather than started just now. */
-  resumed: boolean;
+  /** The floating chat is open. */
+  open: boolean;
+  /** Opens the chat. With a piece, the stylist picks up talking about it; `afterTry` when she has just tried it on. */
+  openChat: (pieceId?: string, afterTry?: boolean) => void;
+  closeChat: () => void;
   ask: (text: string) => void;
+  /** "Find me an abaya": asks the occasion first, when she has not given one. */
+  findPiece: (text: string) => void;
   findSize: () => void;
   editSize: () => void;
   completeSet: () => void;
+  /** Builds the set again for another occasion. */
+  changeOccasion: (occasion: number) => void;
+  /** Puts the set for this occasion in the chat, for her to change. */
+  offerSet: (occasion: number) => void;
   another: () => void;
-  submitSize: (inputs: SizeInputs, scanned?: boolean) => SizeResult | null;
+  /** Starts the conversation over. */
+  restart: () => void;
+  /** `said` is what she told us, in her own words, when it came from the form. */
+  submitSize: (inputs: SizeInputs, scanned?: boolean, said?: string) => SizeResult | null;
   addSized: () => void;
   /** Adds the look to the bag, asking her size first when it is not known. `look` replaces the picks. */
   addLook: (look?: Picks) => void;
-  halt: () => void;
-  takeOver: () => void;
-  focusInput: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   scanning: boolean;
   setScanning: (on: boolean) => void;
 }
 
 const C = createContext<Ctx | null>(null);
+/** Only the way to open the chat, for buttons on other pages, which need not re-render with every message. */
+const O = createContext<Ctx['openChat'] | null>(null);
+export function useOpenChat() {
+  const v = useContext(O);
+  if (!v) throw new Error('useOpenChat outside ConciergeProvider');
+  return v;
+}
+
 export function useConcierge() {
   const v = useContext(C);
   if (!v) throw new Error('useConcierge outside ConciergeProvider');
   return v;
 }
 
+/** Mid-sentence in English, without touching a name inside it ("for Eid"). */
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+const DEFAULT_OCCASION = 3;
 const firstSentence = (s: string) => /^.*?[.!؟?](\s|$)/.exec(s)?.[0].trim() ?? s;
 
-const SAMPLE_KEY = 'mazun_sample_seen';
-let lastPop = 0;
-if (typeof window !== 'undefined') window.addEventListener('popstate', () => { lastPop = Date.now(); });
 const sessionSet = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* storage blocked */ } };
 const sessionDrop = (k: string) => { try { sessionStorage.removeItem(k); } catch { /* storage blocked */ } };
-const sampleSeen = () => { try { return sessionStorage.getItem(SAMPLE_KEY) === '1'; } catch { return false; } };
 
 export function ConciergeProvider({ children }: { children: ReactNode }) {
   const b = useBoutique();
   const { c } = useShop();
-  const reduce = useReducedMotion();
   const byRole = useMemo(() => accessoriesByRole(b.products), [b.products]);
-  // The piece chosen in admin (Settings → featured) opens the page and stars in the sample, while it is in stock.
+  // The piece chosen in admin (Settings → featured) is the one she talks about first, while it is in stock.
   const featured = b.byId(b.settings.home.featuredId);
   const featuredId = featured?.kind === 'garment' && featured.sizes.some(s => s.ok) ? featured.id : null;
   const opening = featuredId ?? b.garments.find(g => g.wornFront && g.sizes.some(s => s.ok))?.id ?? b.garments[0]?.id ?? '';
@@ -97,16 +106,13 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
   const [turns, setTurns] = useState<Turn[]>([greeting]);
   const [draft] = useState(makeDraft);
   const [busy, setBusy] = useState(false);
-  const [sample, setSample] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const [gid, setGid] = useState(opening);
-  const [occasion, setOccasion] = useState(3);
-  const [picks, setPicks] = useState<Picks>(() => presetPicks(byRole, 3));
+  const [occasion, setOccasion] = useState(DEFAULT_OCCASION);
+  const [picks, setPicks] = useState<Picks>(() => presetPicks(byRole, DEFAULT_OCCASION));
   const [sized, setSized] = useState<SizeResult | null>(null);
   const [reached, setReached] = useState(0);
   const [scanning, setScanning] = useState(false);
-  const [resumed, setResumed] = useState(false);
-  const resumedOnce = useRef(false);
+  const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
   const seen = useRef<string[]>([]);
@@ -115,11 +121,12 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
   const named = useRef(false);
   const addAfterSize = useRef(false);
   const confused = useRef(0);
-  const timeline = useRef<gsap.core.Timeline | null>(null);
+  // What she last asked of a piece, so it follows her to the next one.
+  const wanted = useRef<'size' | 'set' | 'tryon' | null>(null);
   const run = useRef(0);
   // The handlers below read current values through this, so a reply that lands late still acts on the latest state.
-  const live = useRef({ gid, occasion, turns, sized, picks, sample, reached });
-  live.current = { gid, occasion, turns, sized, picks, sample, reached };
+  const live = useRef({ gid, occasion, turns, sized, picks, reached, open, busy });
+  live.current = { gid, occasion, turns, sized, picks, reached, open, busy };
 
   const garment = b.byId(gid);
   const say = useCallback((me: boolean, text: string, card?: Card) => {
@@ -128,9 +135,20 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
     setTurns(live.current.turns);
   }, []);
   const reach = useCallback((n: number) => { live.current.reached = Math.max(live.current.reached, n); setReached(r => Math.max(r, n)); }, []);
+  /** Something went in the bag: the stylist says so where she is being read, and the page's toast says so where she is not. */
+  const confirmAdded = useCallback((text: string) => {
+    say(false, text, 'added');
+    if (!live.current.open) b.toast(text);
+  }, [b, say]);
+  /** She asked for a size, a set or a try-on before choosing anything: name the piece it is for, with a way to change it. */
+  const introduce = useCallback((g: Garment) => {
+    if (live.current.reached >= 2) return;
+    say(false, fill(c.aiStartWith, { name: b.tx(g.name) }), 'intro');
+    reach(2);
+  }, [b, c, say, reach]);
 
   const forget = useCallback(() => {
-    seen.current = []; knownSize.current = null; knownScanned.current = false; named.current = false; addAfterSize.current = false; confused.current = 0;
+    seen.current = []; knownSize.current = null; knownScanned.current = false; named.current = false; addAfterSize.current = false; confused.current = 0; wanted.current = null;
     live.current.sized = null; setSized(null);
     live.current.reached = 0; setReached(0);
     live.current.turns = [greeting]; setTurns([greeting]);
@@ -143,11 +161,10 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (firstLang.current === b.lang) return;
     firstLang.current = b.lang;
-    timeline.current?.kill(); timeline.current = null;
     run.current++;
     dropSaved.current = true;
     forget();
-    live.current.sample = false; setSample(false); setPlaying(false); setBusy(false);
+    setBusy(false);
   }, [b.lang, forget]);
 
   const chooseGarment = useCallback((id: string) => {
@@ -167,8 +184,8 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
       const s = a?.sizes.find(x => x.ok)?.n;
       if (a && s) b.addToBag(a.id, 0, s);
     }
-    b.toast(b.t.lookAdded);
-  }, [b]);
+    confirmAdded(b.t.lookAdded);
+  }, [b, confirmAdded]);
 
   const applySize = useCallback((inputs: SizeInputs, scanned = false): SizeResult | null => {
     const g = b.byId(live.current.gid);
@@ -199,7 +216,9 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
     const name = g ? b.tx(g.name) : '';
     const reply = a.reply?.trim();
     if (a.intent !== 'chat') confused.current = 0;
+    wanted.current = a.intent === 'size' || a.intent === 'set' || a.intent === 'tryon' ? a.intent : null;
     if (!g && a.intent !== 'chat') { addAfterSize.current = false; say(false, reply || c.aiConfused); return; }
+    if (g && (a.intent === 'size' || a.intent === 'set' || a.intent === 'tryon')) introduce(g);
     switch (a.intent) {
       case 'pick': {
         addAfterSize.current = false;
@@ -210,7 +229,7 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
         say(false, a.note ? `${a.note} ${text}` : text, 'piece');
         // A new piece starts its own size and set.
         live.current.sized = null; setSized(null);
-        setSet(a.picks ?? presetPicks(byRole, a.occasion ?? live.current.occasion));
+        setSet(a.picks ?? setFor(byRole, g, a.occasion ?? live.current.occasion));
         reach(2);
         return;
       }
@@ -221,11 +240,14 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
         say(false, reply || c.aiSizeAsk, 'sizeAsk');
         return;
       }
-      case 'set':
-        setSet(a.picks ?? presetPicks(byRole, a.occasion ?? live.current.occasion));
-        say(false, reply || fill(c.aiSetReply, { name }), 'set');
+      case 'set': {
+        const o = a.occasion ?? live.current.occasion;
+        setSet(a.picks ?? setFor(byRole, g!, o));
+        // The occasion is only named if she has named one.
+        say(false, reply || (named.current ? fill(c.aiSetReply, { name, occasion: lowerFirst(c.aiOccasions[o]) }) : fill(c.aiSetReplyPlain, { name })), 'set');
         reach(4);
         return;
+      }
       case 'tryon':
         say(false, reply || fill(c.aiTryReply, { name }), 'tryon');
         reach(2);
@@ -235,12 +257,12 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
         confused.current += 1;
         say(false, reply || c.aiConfused, confused.current >= 2 ? 'human' : undefined);
     }
-  }, [b, byRole, c, say, reach, setOcc, setSet, chooseGarment, applySize]);
+  }, [b, byRole, c, say, reach, setOcc, setSet, chooseGarment, applySize, introduce]);
 
-  /** Once every piece in stock has been shown, the list starts again from the one on screen. */
+  /** Once every piece in stock has been shown, the list starts again from the one in the conversation. */
   const seenSoFar = useCallback(() => {
     if (seen.current.length >= b.garments.filter(g => g.sizes.some(s => s.ok)).length) seen.current = [live.current.gid];
-    // The piece on the stage counts as seen, even when it is only the opening photo.
+    // The piece in the conversation counts as seen, even when it is only the opening one.
     return seen.current.includes(live.current.gid) ? seen.current : [...seen.current, live.current.gid];
   }, [b.garments]);
 
@@ -253,37 +275,16 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
     return { intent: r.intent, garmentId: g?.id ?? null, occasion: r.occasion, size: r.size, note };
   }, [b.garments, b.lang, c, seenSoFar]);
 
-  /** Stops the sample where it is; what it has shown so far stays. */
-  const halt = useCallback(() => {
-    if (!timeline.current) return;
-    timeline.current.kill(); timeline.current = null;
-    setPlaying(false); setBusy(false); draft.set('');
-    sessionSet(SAMPLE_KEY, '1');
-  }, [draft]);
-
-  const clearSample = useCallback(() => {
-    const wasPlaying = !!timeline.current;
-    timeline.current?.kill(); timeline.current = null;
-    setPlaying(false);
-    // The sample may have been waiting on its own typing dots; nothing else would ever turn them off.
-    if (wasPlaying) setBusy(false);
-    if (!live.current.sample) return;
-    live.current.sample = false;
-    setSample(false);
-    sessionSet(SAMPLE_KEY, '1');
-    forget();
-  }, [forget]);
-
   const ask = useCallback(async (raw: string) => {
     const text = raw.trim().slice(0, 400);
     if (!text) return;
-    clearSample();
     run.current++;
     const id = run.current;
     const history = live.current.turns.slice(-8).filter(t => t.id !== 0).map(t => ({ me: t.me, text: t.text }));
     say(true, text);
     reach(1);
     draft.set('');
+    live.current.busy = true;
     setBusy(true);
     let answer: Answer | null = null;
     if (b.ai.text) {
@@ -298,7 +299,7 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
     if (id !== run.current) return;
     setBusy(false);
     apply(answer ?? localAnswer(text));
-  }, [b.ai.text, b.lang, clearSample, say, reach, apply, localAnswer, draft]);
+  }, [b.ai.text, b.lang, say, reach, apply, localAnswer, draft]);
 
   /** Measurements complete enough to size another piece without asking again. */
   const knownInputs = useCallback((): SizeInputs | null => {
@@ -307,166 +308,174 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const findSize = useCallback(() => {
-    clearSample();
     run.current++;
     setBusy(false);
+    // The question is already on screen, waiting for her.
+    if (live.current.turns.at(-1)?.card === 'sizeAsk') return;
+    wanted.current = 'size';
     say(true, c.aiActSize);
     reach(1);
+    const g = b.byId(live.current.gid);
+    if (g) introduce(g);
     // What she already told us, or what the camera read, still holds for the next piece.
     const k = knownInputs();
     if (k) { applySize(k, knownScanned.current); return; }
     say(false, c.aiSizeAsk, 'sizeAsk');
-  }, [c, clearSample, say, reach, applySize, knownInputs]);
+  }, [b, c, say, reach, applySize, knownInputs, introduce]);
 
   /** She wants to give different measurements. */
   const editSize = useCallback(() => {
-    clearSample();
     run.current++;
     setBusy(false);
     say(false, c.aiSizeAsk, 'sizeAsk');
-  }, [c, clearSample, say]);
+  }, [c, say]);
 
-  const completeSet = useCallback(() => {
-    clearSample();
+  const completeSet = useCallback(() => { if (!live.current.busy) void ask(c.aiActSet); }, [ask, c]);
+
+  const findPiece = useCallback((text: string) => {
+    if (named.current) { void ask(text); return; }
     run.current++;
     setBusy(false);
-    say(true, c.aiActSet);
+    say(true, text);
+    reach(1);
+    say(false, c.aiAskOccasion);
+  }, [ask, c, say, reach]);
+
+  const changeOccasion = useCallback((o: number) => {
+    if (live.current.busy) return;
+    setOcc(o);
+    // Claude rebuilds the set when it is connected, so one tap does not swap its choice for the shop's table.
+    if (b.ai.text) { void ask(`${c.aiActSet} ${lowerFirst(c.aiOccasions[o])}`); return; }
+    run.current++;
+    setBusy(false);
     const g = b.byId(live.current.gid);
-    setSet(presetPicks(byRole, live.current.occasion));
-    say(false, fill(c.aiSetReply, { name: g ? b.tx(g.name) : '' }), 'set');
+    if (!g) return;
+    setSet(setFor(byRole, g, o));
+    // It works like a filter on the card she is looking at, so the card's caption changes in place.
+    const text = fill(c.aiSetReply, { name: b.tx(g.name), occasion: lowerFirst(c.aiOccasions[o]) });
+    const at = live.current.turns.reduce((n, t) => (t.card === 'set' ? t.id : n), -1);
+    if (at < 0) say(false, text, 'set');
+    else { live.current.turns = live.current.turns.map(t => (t.id === at ? { ...t, text } : t)); setTurns(live.current.turns); }
     reach(4);
-  }, [b, byRole, c, clearSample, say, reach, setSet]);
+  }, [b, byRole, c, say, reach, setOcc, setSet, ask]);
+
+  const offerSet = useCallback((o: number) => {
+    const g = b.byId(live.current.gid);
+    if (!g) return;
+    run.current++;
+    setBusy(false);
+    setOcc(o);
+    setSet(setFor(byRole, g, o));
+    say(false, b.ai.text ? c.aiSetChangeAi : c.aiSetChange, 'set');
+    reach(4);
+  }, [b, byRole, c, say, reach, setOcc, setSet]);
 
   const another = useCallback(() => {
-    clearSample();
+    const again = wanted.current;
     run.current++;
     setBusy(false);
     say(true, c.aiActOther);
     const g = pickGarment(b.garments, { occasion: live.current.occasion, family: null, budget: null, another: true }, seenSoFar());
     apply({ intent: 'pick', garmentId: g?.id ?? null, occasion: named.current ? live.current.occasion : null });
-  }, [b.garments, c, clearSample, say, apply, seenSoFar]);
-
-  const submitSize = useCallback((inputs: SizeInputs, scanned = false) => {
-    clearSample();
-    return applySize(inputs, scanned);
-  }, [clearSample, applySize]);
-
-  const focusInput = useCallback(() => {
-    document.getElementById('talk')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), reduce ? 0 : 500);
-  }, [reduce]);
-
-  const addLook = (look?: Picks) => {
-    if (look) setSet(look);
-    // A size from the sample conversation was never hers.
-    const res = live.current.sample ? null : live.current.sized;
-    if (res && res.garmentId === live.current.gid) { commitLook(res); return; }
-    // The abaya needs a size before it goes in the bag; the bag waits for the answer.
-    clearSample();
-    addAfterSize.current = true;
+    if (!g || !again) return;
+    // What she asked for the last piece, she wants for this one.
+    if (again !== 'size') { apply({ intent: again, garmentId: null, occasion: null }); return; }
+    wanted.current = 'size';
     const k = knownInputs();
     if (k) applySize(k, knownScanned.current);
     else say(false, c.aiSizeAsk, 'sizeAsk');
-    if (look) focusInput();
+  }, [b.garments, c, say, apply, applySize, knownInputs, seenSoFar]);
+
+  const submitSize = useCallback((inputs: SizeInputs, scanned = false, said?: string) => {
+    if (said) say(true, said);
+    return applySize(inputs, scanned);
+  }, [say, applySize]);
+
+  // A bag still waiting on a size does not outlive the conversation that asked for it.
+  const closeChat = useCallback(() => { addAfterSize.current = false; setOpen(false); }, []);
+
+  const restart = useCallback(() => {
+    run.current++;
+    live.current.busy = false;
+    setBusy(false);
+    forget();
+    sessionDrop(SAVE_KEY);
+    live.current.gid = opening;
+    setGid(opening);
+    live.current.occasion = DEFAULT_OCCASION;
+    setOccasion(DEFAULT_OCCASION);
+    setSet(presetPicks(byRole, DEFAULT_OCCASION));
+  }, [forget, opening, byRole, setSet]);
+
+  const openChat = useCallback((pieceId?: string, afterTry = false) => {
+    const g = pieceId ? b.byId(pieceId) : undefined;
+    // A reply on its way is left to land: dropping it would leave her question unanswered.
+    if (g?.kind === 'garment' && !live.current.busy) {
+      const changed = g.id !== live.current.gid;
+      const text = fill(afterTry ? c.aiAfterTry : c.aiOnPiece, { name: b.tx(g.name) });
+      // Reopening on the same piece carries on where she was, without the stylist repeating herself.
+      if ((changed || afterTry || live.current.reached < 2) && live.current.turns.at(-1)?.text !== text) {
+        run.current++;
+        setBusy(false);
+        // A bag waiting on a size was for the piece she has left.
+        if (changed) { addAfterSize.current = false; live.current.sized = null; setSized(null); setSet(setFor(byRole, g, live.current.occasion)); }
+        chooseGarment(g.id);
+        say(false, text, 'piece');
+        reach(2);
+      }
+    }
+    setOpen(true);
+  }, [b, byRole, c, say, reach, setSet, chooseGarment]);
+
+  const addLook = (look?: Picks) => {
+    if (look) setSet(look);
+    const res = live.current.sized;
+    if (res && res.garmentId === live.current.gid) { commitLook(res); return; }
+    // The abaya needs a size before it goes in the bag; the bag waits for the answer.
+    addAfterSize.current = true;
+    if (look) { live.current.open = true; setOpen(true); }
+    const k = knownInputs();
+    if (k) applySize(k, knownScanned.current);
+    else say(false, c.aiSizeAsk, 'sizeAsk');
   };
 
   const addSized = () => {
-    // The sample's size is not hers: ask for the real one instead.
-    if (live.current.sample) { findSize(); return; }
     const res = live.current.sized;
     if (!res) return;
     b.addToBag(res.garmentId, 0, res.rec.size);
-    b.toast(c.aiAddedOne);
+    confirmAdded(c.aiAddedOne);
   };
-
-  const takeOver = useCallback(() => {
-    clearSample();
-    inputRef.current?.focus({ preventScroll: true });
-  }, [clearSample]);
 
   // Keeps a real conversation for the session.
   useEffect(() => {
     // Runs in the same commit as a language change, while this render still holds the old conversation.
     if (dropSaved.current) { dropSaved.current = false; sessionDrop(SAVE_KEY); return; }
-    if (sample || reached === 0) return;
+    if (reached === 0) return;
     const saved: Saved = { lang: b.lang, turns, gid, occasion, named: named.current, picks, sized, reached, seen: seen.current, known: knownSize.current, scanned: knownScanned.current, nextId: nextId.current };
     sessionSet(SAVE_KEY, JSON.stringify(saved));
-  }, [sample, reached, turns, gid, occasion, picks, sized, b.lang]);
+  }, [reached, turns, gid, occasion, picks, sized, b.lang]);
 
-  // The restored thread changes the page's height after the browser has already scrolled to the address's section, so
-  // the section is found again once the taller thread is in the DOM. Not on Back, where she returns to where she was reading.
-  useLayoutEffect(() => {
-    if (resumed && location.hash && Date.now() - lastPop > 1500) document.getElementById(location.hash.slice(1))?.scrollIntoView();
-  }, [resumed]);
-
-  /** On arrival: her own conversation if there is one; otherwise the sample, written from the live catalogue with the
-   *  same logic a real message gets, and played once a session. */
+  /** On arrival: her own conversation if there is one, and the chat already open for a link to it (/#talk, /?g=<id>#talk). */
   useEffect(() => {
-    if (!b.garments.length || resumedOnce.current) return;
+    const arrive = () => {
+      if (location.hash === '#talk') openChat(new URLSearchParams(location.search).get('g') ?? undefined, true);
+    };
     const saved = readSaved();
-    // Coming back from the fitting room (/?g=<id>#talk), the stylist picks up with the piece she just tried.
-    const tried = b.byId(new URLSearchParams(location.search).get('g'));
-    const fromRoom = tried?.kind === 'garment' ? tried : undefined;
-    const usable = !!saved && saved.lang === b.lang && !!b.byId(saved.gid);
-    if (usable || fromRoom) {
-      resumedOnce.current = true;
-      setResumed(true);
-      if (usable) {
-        nextId.current = saved.nextId; seen.current = saved.seen; knownSize.current = saved.known; knownScanned.current = saved.scanned; named.current = saved.named;
-        live.current.turns = saved.turns; live.current.reached = saved.reached; live.current.occasion = saved.occasion; live.current.picks = saved.picks;
-        live.current.gid = saved.gid;
-        const keptSize = saved.sized && b.byId(saved.sized.garmentId) ? saved.sized : null;
-        live.current.sized = keptSize;
-        setTurns(saved.turns); setGid(saved.gid); setOccasion(saved.occasion); setPicks(saved.picks); setSized(keptSize); setReached(saved.reached);
-      }
-      if (fromRoom) {
-        chooseGarment(fromRoom.id);
-        say(false, fill(c.aiAfterTry, { name: b.tx(fromRoom.name) }), 'piece');
-        reach(2);
-        history.replaceState(history.state, '', `/${location.hash}`);
-      }
-      return;
-    }
-    if (sampleSeen()) return;
-    const [q1, q2, q3] = c.aiDemo;
-    const answerOne = () => { const a = localAnswer(q1); apply(featuredId ? { ...a, garmentId: featuredId, note: undefined } : a); };
-    const answerTwo = () => apply({ intent: 'size', garmentId: null, occasion: null, size: readMessage(q2).size });
-    const answerThree = () => apply({ intent: 'set', garmentId: null, occasion: null });
-    live.current.sample = true;
-    setSample(true);
-    live.current.turns = [greeting];
-    setTurns([greeting]);
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      say(true, q1); answerOne(); say(true, q2); answerTwo(); say(true, q3); answerThree();
-      setReached(4);
-      sessionSet(SAMPLE_KEY, '1');
-      return;
-    }
-    setPlaying(true);
-    const tl = gsap.timeline({ delay: 1.1, onComplete: () => { setPlaying(false); timeline.current = null; sessionSet(SAMPLE_KEY, '1'); } });
-    timeline.current = tl;
-    const typed = (text: string) => {
-      const proxy = { n: 0 };
-      tl.to(proxy, { n: text.length, duration: Math.min(1.5, text.length * 0.035), ease: 'none', onUpdate: () => draft.set(text.slice(0, Math.round(proxy.n))) });
-    };
-    const exchange = (text: string, answer: () => void, stage: number) => {
-      typed(text);
-      tl.call(() => { draft.set(''); say(true, text); reach(1); setBusy(true); }, undefined, '+=0.3');
-      tl.call(() => { setBusy(false); answer(); reach(stage); }, undefined, '+=0.9');
-    };
-    exchange(q1, answerOne, 2);
-    tl.to({}, { duration: 2.2 });
-    exchange(q2, answerTwo, 3);
-    tl.to({}, { duration: 2 });
-    exchange(q3, answerThree, 4);
-    return () => { tl.kill(); };
-    // Runs once, when the page opens.
+    if (!saved || saved.lang !== b.lang || !b.byId(saved.gid)) { arrive(); return; }
+    nextId.current = saved.nextId; seen.current = saved.seen; knownSize.current = saved.known; knownScanned.current = saved.scanned; named.current = saved.named;
+    live.current.turns = saved.turns; live.current.reached = saved.reached; live.current.occasion = saved.occasion; live.current.picks = saved.picks;
+    live.current.gid = saved.gid;
+    const keptSize = saved.sized && b.byId(saved.sized.garmentId) ? saved.sized : null;
+    live.current.sized = keptSize;
+    setTurns(saved.turns); setGid(saved.gid); setOccasion(saved.occasion); setPicks(saved.picks); setSized(keptSize); setReached(saved.reached);
+    arrive();
+    // Runs once, when the shop opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: Ctx = {
-    turns, draft, busy, sample, playing, garment, occasion, picks, sized, knownHeight: knownSize.current?.height ?? 0, reached, resumed,
-    ask: t => { void ask(t); }, findSize, editSize, completeSet, another, submitSize, addSized, addLook, halt, takeOver, focusInput, inputRef, scanning, setScanning,
+    turns, draft, busy, garment, occasion, picks, sized, knownHeight: knownSize.current?.height ?? 0, reached, open, openChat, closeChat,
+    ask: t => { void ask(t); }, findPiece, findSize, editSize, completeSet, changeOccasion, offerSet, another, restart, submitSize, addSized, addLook, inputRef, scanning, setScanning,
   };
-  return <C.Provider value={value}>{children}</C.Provider>;
+  return <O.Provider value={openChat}><C.Provider value={value}>{children}</C.Provider></O.Provider>;
 }

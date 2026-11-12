@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- garment cut-outs and the customer's photo as data URLs */
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { effectivePrice } from '@/lib/fit';
 import { readPhotoOrVideo } from '@/lib/photo';
@@ -10,6 +11,7 @@ import type { Garment } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { InfoDialog, productHref } from './Chrome';
 import { savedSize } from './concierge/saved';
+import { useOpenChat } from './concierge/useConcierge';
 import { LiveMirror } from './LiveMirror';
 import { Icon, type DuoIconName, type IconName } from './Icon';
 import { useShop } from './Shop';
@@ -35,6 +37,9 @@ function HouseModel({ g, label }: { g?: Garment; label: string }) {
  *  with a slider. Leaving the preview cancels a try-on that is still running. */
 export function TryOnPage() {
   const b = useBoutique();
+  const openChat = useOpenChat();
+  const query = useSearchParams();
+  const queryPiece = query.get('g'), queryLive = query.get('live');
   const { c, picks } = useShop();
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(1);
@@ -60,15 +65,38 @@ export function TryOnPage() {
   const splitLeft = useTransform(clip, v => `${v}%`);
 
   const garments = b.garments;
+  // The address names the piece; the chat can change it while she is on this page.
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const q = params.get('g');
-    if (params.get('live') === '1') setLive(true);
-    const fromQuery = b.byId(q);
+    const named = b.byId(queryPiece);
+    if (named?.kind === 'garment' && named.id !== gid) {
+      // A result on screen belongs to the piece she has just left.
+      cancelRun();
+      setResult(null);
+      setAdded(null);
+      setFailed(false);
+      setStep(s => (s === 3 ? 2 : s));
+      setGid(named.id);
+    }
+  }, [queryPiece]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Apart from the piece: taking live= off the address must not put back a piece she changed inside the mirror.
+  useEffect(() => { if (queryLive === '1') setLive(true); }, [queryLive]);
+  useEffect(() => {
     const latestPick = [...picks].reverse().map(id => b.byId(id)).find(x => x?.kind === 'garment');
-    const first = fromQuery?.kind === 'garment' ? fromQuery : latestPick;
-    if (first) setGid(g => g ?? first.id);
+    if (latestPick) setGid(g => g ?? latestPick.id);
   }, [b.byId, picks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // However the mirror closes, the address stops asking for it, so the same link works again and a reload does not reopen
+  // it. The null state lets Next carry its own and keep useSearchParams in step.
+  const wasLive = useRef(false);
+  useEffect(() => {
+    if (live) { wasLive.current = true; return; }
+    if (!wasLive.current) return;
+    wasLive.current = false;
+    const u = new URL(location.href);
+    if (!u.searchParams.has('live')) return;
+    u.searchParams.delete('live');
+    history.replaceState(null, '', u);
+  }, [live]);
 
   const g = b.byId(gid) ?? garments[0];
   const cancelRun = () => { run.current++; ctrl.current?.abort(); ctrl.current = null; setDressing(false); };
@@ -349,7 +377,7 @@ export function TryOnPage() {
                         <button type="button" className="mz-reset" onClick={share}><Icon name="share" />{c.share}</button>
                       </div>
                     </div>
-                    <Link href={`/?g=${encodeURIComponent(g.id)}#talk`} className="mz-link is-main mz-try-back"><Icon name="chat" size={18} />{c.aiBack}</Link>
+                    <button type="button" className="mz-reset mz-link is-main mz-try-back" onClick={() => openChat(g.id, true)}><Icon name="chat" size={18} />{c.aiBack}</button>
                     <p className="mz-note is-plain"><Icon name="info" size={18} />{c.disclaimer}</p>
                   </>
                 )}

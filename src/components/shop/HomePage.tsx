@@ -6,99 +6,30 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fill } from '@/lib/concierge';
 import { effectivePrice } from '@/lib/fit';
-import { accessoriesByRole, lookTotal, presetPicks } from '@/lib/stylist';
+import { accessoriesByRole, lookTotal, setFor } from '@/lib/stylist';
 import { ACCESSORY_KINDS } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
-import { BodyScan } from './concierge/BodyScan';
-import { Chat } from './concierge/Chat';
-import { ConciergeProvider, useConcierge } from './concierge/useConcierge';
+import { useConcierge } from './concierge/useConcierge';
 import { FlipCard } from './FlipCard';
 import { SplitReveal, useScrollScene } from './fx';
+import { HomeHero } from './HomeHero';
 import { Icon, type IconName } from './Icon';
+import { Rack } from './Rack';
 import { useShop } from './Shop';
 import { EASE, SPRING, cardBg, num, reveal } from './tokens';
 
-/** The home page is the product: a working conversation first, then each thing the stylist does, shown doing it. */
+/** The home page: the cover, the rack, then one section for each thing the stylist does. The stylist itself floats over the whole shop. */
 export function HomePage() {
   return (
-    <ConciergeProvider>
-      <main className="ai-page">
-        <Hero />
-        <Wear />
-        <SizeScene />
-        <TheSet />
-        <Browse />
-        <Close />
-      </main>
-      <Dock />
-      <BodyScan />
-    </ConciergeProvider>
-  );
-}
-
-const rise = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { ...SPRING.soft, delay: 0.07 * i } });
-
-function Hero() {
-  const b = useBoutique();
-  const { c } = useShop();
-  const a = useConcierge();
-  const reduce = useReducedMotion();
-  const g = a.garment;
-  const photo = g?.wornFront || g?.front;
-  const set = ACCESSORY_KINDS.filter(k => a.picks[k]).length;
-  const steps: { label: string; href: string; icon: IconName }[] = [
-    { label: c.aiStepTalk, href: '#talk', icon: 'chat' },
-    { label: c.aiStepWear, href: '#wear', icon: 'yourPhoto' },
-    { label: c.aiStepSize, href: '#size', icon: 'ruler' },
-    { label: c.aiStepSet, href: '#set', icon: 'handbag' },
-  ];
-  return (
-    <section id="talk" className="ai-hero">
-      <div className="ai-hero__head">
-        <motion.p className="ai-eyebrow" {...rise(1)}>{c.aiEyebrow}</motion.p>
-        <SplitReveal key={b.lang} as="h1" className="ai-h1" text={c.aiH1} />
-        <motion.p className="ai-hero__sub" {...rise(3)}>{c.aiSub}</motion.p>
-      </div>
-
-      <div className="ai-stage" style={{ background: cardBg(g?.colors[0]?.hex) }}>
-        <span className="ai-stage__floor" aria-hidden="true" />
-        <AnimatePresence initial={false}>
-          {photo && (
-            <motion.img key={photo} src={photo} alt={g ? `${c.wearing} ${b.tx(g.name)}` : ''} className="ai-stage__model" draggable={false} fetchPriority="high"
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, scale: 1.02 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.9, ease: EASE }} />
-          )}
-        </AnimatePresence>
-        <div className="ai-stage__tags">
-          <AnimatePresence>
-            {a.sized && a.sized.garmentId === g?.id && (
-              <motion.span key="size" className="ai-tag" initial={{ opacity: 0, y: 10, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={SPRING.soft}>
-                <Icon name="ruler" size={16} />{c.aiStepSize}<b dir="ltr">{a.sized.rec.size}</b>
-              </motion.span>
-            )}
-            {a.reached >= 4 && set > 0 && (
-              <motion.span key="set" className="ai-tag" initial={{ opacity: 0, y: 10, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={SPRING.soft}>
-                <Icon name="handbag" size={16} />{c.aiStepSet}<b>+{num(set, b.lang)}</b>
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      <Chat />
-
-      <nav className="ai-rail" aria-label={c.aiStepsLabel}>
-        <ol>
-          {steps.map((s, i) => (
-            <li key={s.href} className={a.reached > i ? 'is-on' : undefined}>
-              <a href={s.href} onClick={i === 0 ? e => { e.preventDefault(); a.takeOver(); } : undefined}>
-                <Icon name={s.icon} size={18} /><span>{s.label}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </nav>
-    </section>
+    <main className="ai-page">
+      <HomeHero />
+      <Rack />
+      <Wear />
+      <SizeScene />
+      <TheSet />
+      <Browse />
+      <Close />
+    </main>
   );
 }
 
@@ -215,7 +146,7 @@ function SizeScene() {
           <p className="ai-sample-note">{c.aiSizeSample}</p>
           <div className="ai-ctas">
             <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => a.setScanning(true)}><Icon name="camera" size={20} />{c.aiSizeScanCta}</button>
-            <button type="button" className="mz-reset mz-btn is-ghost mz-pill" onClick={() => { a.findSize(); a.focusInput(); }}>{c.aiSizeAskCta}</button>
+            <button type="button" className="mz-reset mz-btn is-ghost mz-pill" onClick={() => { a.findSize(); a.openChat(); }}>{c.aiSizeAskCta}</button>
           </div>
         </motion.div>
       </div>
@@ -231,8 +162,8 @@ function TheSet() {
   const [occ, setOcc] = useState(a.occasion);
   // The occasion she named in the conversation carries down to the board.
   useEffect(() => setOcc(a.occasion), [a.occasion]);
-  const picks = useMemo(() => presetPicks(byRole, occ), [byRole, occ]);
   const g = a.garment;
+  const picks = useMemo(() => (g ? setFor(byRole, g, occ) : {}), [byRole, g, occ]);
   const total = g ? lookTotal(g, picks, id => b.byId(id)) : 0;
   const totalEl = useRef<HTMLElement>(null);
   const shown = useRef(total);
@@ -282,7 +213,7 @@ function TheSet() {
           <p className="ai-total is-big"><span>{c.aiTotal}</span><strong ref={totalEl}>{b.price(total)}</strong></p>
           <div className="ai-ctas">
             <button type="button" className="mz-reset mz-btn is-main mz-pill" onClick={() => a.addLook(picks)}><Icon name="bag" size={20} />{c.aiAddLook}</button>
-            <Link href={`/stylist?g=${encodeURIComponent(g.id)}`} className="mz-btn mz-pill is-line">{c.aiSetAsk}</Link>
+            <button type="button" className="mz-reset mz-btn mz-pill is-line" onClick={() => { a.offerSet(occ); a.openChat(); }}>{c.aiSetAsk}</button>
           </div>
         </div>
       </div>
@@ -326,8 +257,8 @@ function Close() {
     <section id="ask" className="ai-sec ai-close">
       <motion.div className="ai-close__in" {...reveal}>
         <SplitReveal className="ai-h2" text={c.aiCloseT} />
-        <form className="ai-input is-large" onSubmit={e => { e.preventDefault(); const t = v.trim(); if (!t) return; setV(''); a.ask(t); a.focusInput(); }}>
-          <input value={v} maxLength={400} autoComplete="off" aria-label={c.aiPlaceholder} placeholder={c.aiPlaceholder} onChange={e => setV(e.target.value)} />
+        <form className="ai-input is-large" onSubmit={e => { e.preventDefault(); const t = v.trim(); if (!t) return; setV(''); a.ask(t); a.openChat(); }}>
+          <input value={v} dir={v ? 'auto' : undefined} maxLength={400} autoComplete="off" aria-label={c.aiPlaceholder} placeholder={c.aiPlaceholder} onChange={e => setV(e.target.value)} />
           <button type="submit" className="mz-reset ai-send" aria-label={c.aiSend} disabled={!v.trim()}><Icon name="send" size={20} /></button>
         </form>
         <ul className="ai-facts">
@@ -335,30 +266,5 @@ function Close() {
         </ul>
       </motion.div>
     </section>
-  );
-}
-
-/** Past the hero the stylist stays one tap away; the closing section has its own field, so the dock steps aside there. */
-function Dock() {
-  const { c } = useShop();
-  const a = useConcierge();
-  const [hidden, setHidden] = useState(true);
-  useEffect(() => {
-    const seen = new Map<Element, boolean>();
-    const io = new IntersectionObserver(es => {
-      es.forEach(e => seen.set(e.target, e.isIntersecting));
-      setHidden([...seen.values()].some(Boolean));
-    }, { threshold: 0.12 });
-    for (const id of ['talk', 'ask']) { const el = document.getElementById(id); if (el) io.observe(el); }
-    return () => io.disconnect();
-  }, []);
-  return (
-    <AnimatePresence>
-      {!hidden && !a.scanning && (
-        <motion.button type="button" className="mz-reset ai-dock" onClick={a.focusInput} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={SPRING.soft} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
-          <Icon name="chat" size={20} />{c.aiDock}
-        </motion.button>
-      )}
-    </AnimatePresence>
   );
 }

@@ -1,7 +1,7 @@
-/* The conversation kept for the browser session, so a trip to the fitting room does not lose it. Its own file so the
-   fitting room can read her size without loading the conversation's code. */
+/* The conversation kept for the browser session, so a full reload does not lose it. It is read back into a provider that
+   wraps every shop page, so anything malformed is refused here rather than crashing the shop. */
 import type { SizeInputs } from '@/lib/fit';
-import type { Picks } from '@/lib/stylist';
+import { OCCASION_COUNT, type Picks } from '@/lib/stylist';
 import type { SizeResult, Turn } from './useConcierge';
 
 export const SAVE_KEY = 'mazun_concierge';
@@ -10,7 +10,14 @@ export interface Saved { lang: string; turns: Turn[]; gid: string; occasion: num
 export function readSaved(): Saved | null {
   try {
     const v = JSON.parse(sessionStorage.getItem(SAVE_KEY) ?? 'null') as Saved | null;
-    return v && Array.isArray(v.turns) && v.turns.every(t => typeof t.id === 'number' && typeof t.text === 'string') && typeof v.gid === 'string' ? v : null;
+    return v
+      && Array.isArray(v.turns) && v.turns.every(t => typeof t.id === 'number' && typeof t.text === 'string')
+      && typeof v.gid === 'string' && typeof v.lang === 'string' && Number.isInteger(v.occasion) && v.occasion >= 0 && v.occasion < OCCASION_COUNT && typeof v.reached === 'number' && typeof v.nextId === 'number'
+      && typeof v.named === 'boolean' && typeof v.scanned === 'boolean' && Array.isArray(v.seen)
+      && !!v.picks && typeof v.picks === 'object'
+      && (v.known === null || typeof v.known === 'object')
+      && (v.sized === null || (typeof v.sized?.garmentId === 'string' && typeof v.sized.rec?.size === 'string' && !!v.sized.inputs))
+      ? v : null;
   } catch { return null; }
 }
 

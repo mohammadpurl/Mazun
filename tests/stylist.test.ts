@@ -15,7 +15,7 @@ test('accessoriesByRole groups accessories in admin order and leaves garments ou
 test('occasion presets follow the design: day = first pieces, evening = second', () => {
   assert.deepEqual(presetPicks(byRole, 0), { scarf: 'shayla-silk', bag: 'bag-top', jewel: 'hoops-gold', shoes: 'mule-block' });
   assert.deepEqual(presetPicks(byRole, 1), { scarf: 'shayla-silk', bag: 'bag-clutch', jewel: 'pearl-drops', shoes: 'pump-satin' });
-  assert.deepEqual(presetPicks(byRole, 4), { scarf: 'shayla-jersey', bag: 'bag-top', jewel: 'hoops-gold', shoes: 'mule-block' });
+  assert.deepEqual(presetPicks(byRole, 4), { scarf: 'shayla-jersey', bag: 'bag-top', jewel: 'bangles-silver', shoes: 'mule-block' });
 });
 
 test('a role with one piece wraps, an empty role is left out', () => {

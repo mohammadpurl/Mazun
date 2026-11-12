@@ -6,6 +6,19 @@ const REACHABLE = 'a[href], button, input:not([type=hidden]), select, textarea, 
 const shown = (el: HTMLElement) =>
   (el as { checkVisibility?: HTMLElement['checkVisibility'] }).checkVisibility?.({ checkVisibilityCSS: true }) ?? el.getClientRects().length > 0;
 
+let locks = 0, before = '';
+/** Stops the page scrolling behind a layer and returns the unlock. Counted, because one layer can still be fading out
+ *  when the next one opens, and restoring whatever each one saw would leave the page locked for good. */
+export function lockScroll() {
+  if (locks++ === 0) { before = document.body.style.overflow; document.body.style.overflow = 'hidden'; }
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    if (--locks === 0) document.body.style.overflow = before;
+  };
+}
+
 export function trapTab(e: KeyboardEvent, box: HTMLElement | null) {
   if (e.key !== 'Tab' || !box) return;
   const at = document.activeElement;
