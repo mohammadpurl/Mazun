@@ -8,7 +8,11 @@ export const LIVE_SECONDS = 60;
 export const LIVE_TOKENS_PER_HOUR = 10;
 /** A ceiling for the whole site per day, so a script cannot run up the bill. */
 export const LIVE_TOKENS_PER_DAY = 300;
-/** The live try-on on fal.ai (Decart Lucy 2.1 VTON), used when FAL_KEY is set. */
+/** Decart's live try-on model, pinned so its look and price change only when we choose (the newest on 2026-11-12;
+ *  `lucy-vton-latest` would follow Decart's releases without a deploy). Used for the token and the session alike. */
+export const LIVE_MODEL = 'lucy-vton-3.6';
+/** The live try-on on fal.ai (Decart Lucy 2.1 VTON, an older model): the fallback when there is no DECART_API_KEY or
+ *  Decart does not hand out a token. */
 export const FAL_APP = 'decart/lucy2-vton/realtime';
 
 /** The model reads English: the piece's own name, type and description, and a reminder to leave the face alone.

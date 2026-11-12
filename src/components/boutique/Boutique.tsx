@@ -10,7 +10,7 @@ import { lockScroll, trapTab } from '../shop/focus';
 import { STRINGS, type Strings } from './i18n';
 
 export interface BagLine { id: string; c: number; s: string; q: number }
-export interface AiFlags { text: boolean; image: boolean; /** Live AI try-on (Decart) is configured. */ live: boolean; /** The free public try-on model (Hugging Face) is allowed. */ free: boolean }
+export interface AiFlags { text: boolean; image: boolean; /** Who the live AI try-on sends the camera to: Decart, fal.ai, or Decart with fal.ai as its fallback; null when off. */ live: 'decart' | 'fal' | 'both' | null; /** The free public try-on model (Hugging Face) is allowed. */ free: boolean }
 type Sheet = 'bag' | 'wish' | null;
 interface SizeRequest { garmentId: string; onUse: (size: string) => void }
 

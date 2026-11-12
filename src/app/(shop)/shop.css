@@ -707,12 +707,13 @@ html:has(.mz-root) body{margin:0}
 .mz-live__status.is-alert{display:flex;flex-direction:column;align-items:center;gap:14px;border-radius:20px;padding:22px 22px 20px}
 .mz-live__status.is-alert p{margin:0}
 .mz-live__status.is-alert{width:min(92%,460px)}
-.mz-live__status.is-alert .mz-btn{max-width:100%;white-space:normal;text-align:center;justify-content:center}
+.mz-live__status.is-alert .mz-btn{width:min(100%,300px);max-width:100%;white-space:normal;text-align:center;justify-content:center}
 .mz-live__hint{bottom:16px}
 .mz-live__dot{flex:none;width:9px;height:9px;border-radius:50%;background:#DCC29C}
 .mz-live__flash{position:absolute;inset:0;background:#fff;pointer-events:none}
 .mz-live__video.is-preview{inset:0;width:100%;height:100%;opacity:1;object-fit:cover;transform:scaleX(-1)}
-.mz-live__ai{object-fit:cover;opacity:0;transition:opacity .6s}
+/* The AI stream comes back as the camera sees her; flipped like the preview, it is a mirror (see liveAi.ts). */
+.mz-live__ai{object-fit:cover;opacity:0;transition:opacity .6s;transform:scaleX(-1)}
 .mz-live__ai.is-on{opacity:1}
 .mz-live__timer{position:absolute;top:14px;inset-inline-end:14px;margin:0;padding:6px 12px;border-radius:999px;font-size:13px;font-variant-numeric:tabular-nums;background:rgba(20,16,15,.62);backdrop-filter:blur(10px)}
 .mz-live__consent{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;padding:24px;text-align:center;background:radial-gradient(70% 60% at 50% 40%,#2a2220,#14100f)}
@@ -727,6 +728,7 @@ html:has(.mz-root) body{margin:0}
 .mz-live__bottom{display:flex;flex-direction:column;gap:12px;padding:14px clamp(16px,4vw,32px) max(16px,env(safe-area-inset-bottom))}
 .mz-live__pick{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px}
 .mz-live__strip{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:4px 2px}
+.mz-live__consent-links{display:flex;flex-wrap:wrap;justify-content:center;column-gap:20px}
 .mz-live__strip::-webkit-scrollbar{display:none}
 .mz-live__item{flex:none;width:60px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);transition:transform .5s cubic-bezier(.22,1,.36,1),box-shadow .5s}
 .mz-live__item img{max-width:84%;max-height:90%;object-fit:contain}
@@ -749,6 +751,11 @@ html:has(.mz-root) body{margin:0}
   .mz-live__info{align-items:center;max-width:100%}
   .mz-live__shutter{width:64px;height:64px}
   .mz-live__shutter span{width:50px;height:50px}
+/* Wide screens: the stage takes the camera's shape (--cam, set from the video), centred, so the mirror shows her
+   whole instead of cropping a 4:3 camera into a wide band. Phones keep the full-width stage. */
+@media (min-width:900px){
+  .mz-live__stage{justify-self:center;width:auto;height:100%;max-width:calc(100% - 64px);aspect-ratio:var(--cam,4/3);margin:0}
+}
   .mz-live__note{font-size:11px}
   .mz-live__item{width:54px;height:72px}
   .mz-live__done .mz-btn{flex:1 1 140px;justify-content:center}
