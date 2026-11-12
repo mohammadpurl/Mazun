@@ -47,7 +47,6 @@ export function rootVars(theme: ThemeKey, lang: Lang): CSSProperties {
 /** Spring values from tokens.json → motion, as framer-motion transitions. */
 export const SPRING = {
   soft: { type: 'spring', stiffness: 120, damping: 22, mass: 1 },
-  flip: { type: 'spring', stiffness: 50, damping: 11, mass: 1 },
   rack: { type: 'spring', stiffness: 33, damping: 8.5, mass: 1 },
 } as const;
 export const EASE = [0.22, 1, 0.36, 1] as const;

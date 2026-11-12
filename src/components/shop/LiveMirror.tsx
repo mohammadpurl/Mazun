@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- garment cut-outs and the captured picture as data URLs */
 import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { effectivePrice } from '@/lib/fit';
 import { clothLength, easeAngle, inside, sleevePolygon, sleeveTurn, stretch } from '@/lib/mirror-fit';
 import { LIVE_SECONDS } from '@/lib/live-tryon';
@@ -17,8 +17,10 @@ import { useShop } from './Shop';
 import { SPRING, cardBg, num } from './tokens';
 
 /* The live mirror: the front camera, with the chosen abaya laid on the shoulders as the customer moves. Body tracking
-   runs in the browser (MediaPipe pose landmarker, loaded on demand from our own public/mediapipe); no frame leaves
-   the device unless the customer asks for a realistic render, which goes through the regular try-on. */
+   runs in the browser (MediaPipe pose landmarker, loaded on demand from our own public/mediapipe); in this on-device
+   mode no frame leaves the device unless the customer asks for a realistic render, which goes through the regular
+   try-on. With a live try-on key she can instead, after consenting, be dressed live by AI (liveAi.ts), where the
+   camera stream goes to the provider. Every mode is a mirror: she and the abaya both appear flipped. */
 
 type Pt = PoseLandmark;
 type Landmarker = PoseTracker;
@@ -118,9 +120,11 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
   const [gid, setGid] = useState(initial && garments.some(g => g.id === initial && g.front) ? initial : garments.find(g => g.front)?.id ?? null);
   const [shot, setShot] = useState<{ composite: string; frame: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // With a Decart key the mirror asks first, then dresses her live with AI; otherwise it lays the cut-out on her.
+  // With a live try-on key (Decart or fal.ai) the mirror asks first, then dresses her live with AI; otherwise it lays the cut-out on her.
   const [mode, setMode] = useState<'consent' | 'ai' | 'local'>(b.ai.live ? 'consent' : 'local');
   const [stream, setStream] = useState<MediaStream | null>(null);
+  /** The camera's width over height, once it is known. */
+  const [cam, setCam] = useState<number | null>(null);
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const fit = useRef<Fit | null>(null);
@@ -275,25 +279,35 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
     return () => { document.removeEventListener('keydown', key); unlock(); prev?.focus?.(); };
   }, []);
 
-  /** The picture as she saw it (mirrored, with the abaya), and the bare frame for the AI, mirrored the same way and
-   *  kept to 1024 px like an uploaded photo. */
   const ai = useLiveAi({ on: mode === 'ai' && status === 'live' && !shot, stream, garment: g });
   const aiShows = mode === 'ai' && ai.state === 'live';
   const busy = ai.state === 'connecting' || ai.state === 'reconnecting';
   // One polite voice for the AI session, so a screen reader hears it start, near its end, and stop.
-  const said = mode !== 'ai' || shot ? '' : busy ? c.liveAiConnecting : ai.state === 'live' ? (ai.left <= 10 ? c.liveAiLeft.replace('{n}', num(10, b.lang)) : c.liveAiLive) : ai.state === 'ended' ? c.liveAiEnded : '';
+  const said = mode !== 'ai' || shot ? '' : busy ? c.liveAiConnecting : ai.state === 'live' ? (ai.left <= 10 ? c.liveAiLeft.replace('{n}', num(10, b.lang)) : c.liveAiLive)
+    : ai.state === 'ended' ? c.liveAiEnded : ai.state === 'failed' ? c.liveAiFailed : ai.state === 'rate' ? c.liveAiRate : ai.state === 'off' ? c.liveAiOff : '';
+  // Who the camera goes to, for the consent text and the note: as configured on the server.
+  const who = b.ai.live === 'both' ? c.liveAiWhoBoth : b.ai.live === 'fal' ? c.liveAiWhoFal : c.liveAiWhoDecart;
+  const viaDecart = b.ai.live !== 'fal', viaFal = b.ai.live === 'fal' || b.ai.live === 'both';
+  const wearing = g ? `${c.liveWearing} ${b.tx(g.name)}` : c.liveTitle;
   // A button that started or switched something disappears; focus stays inside the mirror rather than falling out.
   useEffect(() => { if (!dialog.current?.contains(document.activeElement)) dialog.current?.focus(); }, [mode, ai.state, shot]);
 
+  /** The picture as she saw it (mirrored, with the abaya), and for the on-device mirror also the bare frame for the AI,
+   *  mirrored the same way and kept to 1024 px like an uploaded photo. */
   function capture() {
     if (mode === 'ai') {
-      // The AI stream already shows her dressed (and mirrored); that frame is the picture.
+      // The AI stream already shows her dressed; the picture is what she saw: the part the stage shows (object-fit:
+      // cover), mirrored like the stage (the stream comes back as the camera sees her).
       const rv = ai.video.current;
-      if (!aiShows || !rv?.videoWidth) return;
-      const k = Math.min(1, 1280 / Math.max(rv.videoWidth, rv.videoHeight));
+      if (!aiShows || !rv?.videoWidth || !rv.clientWidth || !rv.clientHeight) return;
+      const vw = rv.videoWidth, vh = rv.videoHeight, s = Math.max(rv.clientWidth / vw, rv.clientHeight / vh);
+      const sw = rv.clientWidth / s, sh = rv.clientHeight / s;
+      const k = Math.min(1, 1280 / Math.max(sw, sh));
       const c2 = document.createElement('canvas');
-      c2.width = Math.round(rv.videoWidth * k); c2.height = Math.round(rv.videoHeight * k);
-      c2.getContext('2d')!.drawImage(rv, 0, 0, c2.width, c2.height);
+      c2.width = Math.round(sw * k); c2.height = Math.round(sh * k);
+      const x2 = c2.getContext('2d')!;
+      x2.translate(c2.width, 0); x2.scale(-1, 1);
+      x2.drawImage(rv, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, c2.width, c2.height);
       const pic = c2.toDataURL('image/jpeg', 0.9);
       // Looking at the picture ends the session; another one starts only when she asks.
       ai.hold();
@@ -318,21 +332,30 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
       <div className="mz-live__top">
         <p className="mz-live__title"><Icon name="camera" size={20} />{c.liveTitle}</p>
-        {b.ai.live && mode === 'local' && <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill mz-live__mode" onClick={() => { ai.restart(); setMode('ai'); }}>{c.liveAiTitle}</button>}
+        {b.ai.live && mode === 'local' && <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill mz-live__mode" onClick={() => { ai.restart(); setMode('ai'); }}>{c.liveAiShort}</button>}
         <button type="button" className="mz-reset mz-icon-btn mz-round mz-live__close" aria-label={c.liveClose} onClick={onClose}><Icon name="close" size={20} /></button>
       </div>
 
       <p className="mz-sr" role="status" aria-live="polite">{said}</p>
-      <div className="mz-live__stage" dir="ltr">
-        <video ref={video} className={`mz-live__video${mode === 'ai' ? ' is-preview' : ''}`} playsInline muted aria-hidden="true" />
-        {mode === 'local' && <canvas ref={canvas} className="mz-live__canvas" role="img" aria-label={g ? `${c.wearing} ${b.tx(g.name)}` : c.liveTitle} />}
-        {mode === 'ai' && <video ref={ai.video} className={`mz-live__canvas mz-live__ai${aiShows ? ' is-on' : ''}`} playsInline muted autoPlay aria-label={g ? `${c.wearing} ${b.tx(g.name)}` : c.liveTitle} />}
+      {/* On a wide screen the stage takes the camera's own shape, so her head and feet are not cut off (shop.css). */}
+      <div className="mz-live__stage" dir="ltr" style={cam ? ({ '--cam': String(cam) } as CSSProperties) : undefined}>
+        <video ref={video} className={`mz-live__video${mode === 'ai' ? ' is-preview' : ''}`} playsInline muted aria-hidden="true"
+          onLoadedMetadata={e => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setCam(v.videoWidth / v.videoHeight); }} />
+        {mode === 'local' && <canvas ref={canvas} className="mz-live__canvas" role="img" aria-label={wearing} />}
+        {mode === 'ai' && <video ref={ai.video} className={`mz-live__canvas mz-live__ai${aiShows ? ' is-on' : ''}`} playsInline muted autoPlay role="img" aria-label={wearing} aria-hidden={!aiShows || !!shot} />}
         {mode === 'consent' && (
           <div className="mz-live__consent" dir={b.dir} role="group" aria-labelledby="mz-live-consent-h" aria-describedby="mz-live-consent-body">
             <Icon name="lock" size={22} />
             <h2 id="mz-live-consent-h">{c.liveAiTitle}</h2>
-            <p id="mz-live-consent-body">{c.liveAiBody.replace('{n}', num(LIVE_SECONDS, b.lang))}</p>
-            <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noreferrer" className="mz-link">{c.liveAiPolicy}<Icon name="external" size={16} /></a>
+            <p id="mz-live-consent-body">
+              {c.liveAiBody.replace('{who}', who).replace('{n}', num(LIVE_SECONDS, b.lang))}
+              {viaDecart && <> {c.liveAiKeepDecart}</>}
+              {viaFal && <> {c.liveAiKeepFal}</>}
+            </p>
+            <div className="mz-live__consent-links">
+              {viaDecart && <a href="https://docs.platform.decart.ai/resources/privacy-policy" target="_blank" rel="noreferrer" className="mz-link">{c.liveAiPolicy}<Icon name="external" size={16} /></a>}
+              {viaFal && <a href="https://fal.ai/legal/privacy-policy" target="_blank" rel="noreferrer" className="mz-link">{c.liveAiPolicyFal}<Icon name="external" size={16} /></a>}
+            </div>
             <div className="mz-live__consent-acts">
               <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => setMode('ai')}><Icon name="camera" size={18} />{c.liveAiStart}</button>
               <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill" onClick={() => setMode('local')}>{c.liveAiLocal}</button>
@@ -352,7 +375,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
         )}
         {aiShows && !shot && <p className="mz-live__timer" dir={b.dir} aria-hidden="true">{c.liveAiLeft.replace('{n}', num(ai.left, b.lang))}</p>}
         <AnimatePresence>{shot && <motion.span key="flash" className="mz-live__flash" aria-hidden="true" initial={{ opacity: 0.7 }} animate={{ opacity: 0 }} transition={{ duration: 0.45 }} />}</AnimatePresence>
-        {shot && <img className="mz-live__shot" src={shot.composite} alt={g ? `${c.wearing} ${b.tx(g.name)}` : ''} />}
+        {shot && <img className="mz-live__shot" src={shot.composite} alt={g ? wearing : ''} />}
         {status === 'starting' && mode !== 'consent' && <p className="mz-live__status" dir={b.dir}><span className="mz-live__dot" aria-hidden="true" />{c.liveStarting}</p>}
         {note && (
           <div className="mz-live__status is-alert" dir={b.dir} role="alert">
@@ -394,7 +417,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
             </motion.div>
           )}
         </AnimatePresence>
-        <p className="mz-live__note"><Icon name="lock" size={18} />{mode === 'ai' ? c.liveAiNote : onRealistic && b.ai.image ? c.liveNote : onRealistic && b.ai.free ? c.liveNoteFree : c.liveNoteLocal}</p>
+        <p className="mz-live__note"><Icon name="lock" size={18} />{mode !== 'local' ? c.liveAiNote.replace('{who}', who) : onRealistic && b.ai.image ? c.liveNote : onRealistic && b.ai.free ? c.liveNoteFree : c.liveNoteLocal}</p>
       </div>
     </motion.div>
   );

@@ -1,12 +1,16 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { FAL_APP, LIVE_SECONDS, livePrompt } from '@/lib/live-tryon';
+import { FAL_APP, LIVE_MODEL, LIVE_SECONDS, livePrompt } from '@/lib/live-tryon';
 import type { Garment } from '@/lib/types';
 
-/* The live AI try-on: a copy of the camera stream goes to Decart's Lucy VTON over WebRTC — through fal.ai or Decart
-   directly, whichever key the server has — and the stream that comes back shows the customer wearing the chosen
-   abaya as she moves. Our server only mints short-lived tokens (/api/tryon/live-token). A session stops itself after
-   LIVE_SECONDS and does not restart until she asks. */
+/* The live AI try-on: a copy of the camera stream goes to Decart's Lucy VTON over WebRTC — Decart directly when the
+   server has its key, fal.ai otherwise — and the stream that comes back shows the customer wearing the chosen abaya as
+   she moves. Our server only mints short-lived tokens (/api/tryon/live-token). A session stops itself after
+   LIVE_SECONDS and does not restart until she asks.
+   The mirror: both providers get the camera as it is, and the page flips what comes back (shop.css .mz-live__ai, and
+   the saved picture in LiveMirror's capture). So she and the abaya are both mirrored, like a real looking glass and
+   like the on-device mirror, whichever provider runs: a one-sided belt or embroidery sits where her own mirror would
+   show it. Mirroring the camera before sending would leave the abaya unmirrored on a mirrored body. */
 
 export type LiveAiState = 'idle' | 'connecting' | 'reconnecting' | 'live' | 'ended' | 'failed' | 'rate' | 'off';
 
@@ -31,12 +35,15 @@ type Provider = 'fal' | 'decart';
  *  use up the visitor's hourly allowance. */
 let cached: { provider: Provider; token: string; until: number } | null = null;
 let refused: LiveAiState | null = null;
-async function token(): Promise<{ provider: Provider; token: string }> {
-  if (cached && Date.now() < cached.until) return cached;
-  const r = await fetch('/api/tryon/live-token', { method: 'POST' });
+/** A token; `want` keeps a running session's redials on its own provider, so a reconnect never hands Decart's SDK a
+ *  fal.ai token (or the other way round). */
+async function token(want?: Provider): Promise<{ provider: Provider; token: string }> {
+  if (cached && Date.now() < cached.until && (!want || cached.provider === want)) return cached;
+  const r = await fetch(`/api/tryon/live-token${want ? `?provider=${want}` : ''}`, { method: 'POST' });
   refused = r.status === 429 ? 'rate' : r.status === 503 ? 'off' : null;
   if (!r.ok) throw new Error(`token ${r.status}`);
   const { provider, token: t, expiresAt } = await r.json();
+  if ((provider !== 'decart' && provider !== 'fal') || typeof t !== 'string' || (want && provider !== want)) throw new Error('token shape');
   cached = { provider, token: t, until: Math.min(Date.parse(expiresAt) || 0, Date.now() + 120_000) - 5_000 };
   return cached;
 }
@@ -48,11 +55,12 @@ interface Session { dress(g: Garment): Promise<void>; close(): void }
 /** Decart's own SDK: WebRTC handled for us. */
 async function viaDecart(own: MediaStream, g: Garment, on: Events): Promise<Session> {
   const { createDecartClient, models } = await import('@decartai/sdk');
-  const client = createDecartClient({ telemetry: false, apiKeyProvider: async () => (await token()).token });
+  const client = createDecartClient({ telemetry: false, apiKeyProvider: async () => (await token('decart')).token });
   const c = await client.realtime.connect(own, {
-    model: models.realtime('lucy-vton-latest'),
-    // Always one mirror, like the preview: many desktop webcams report no facingMode for 'auto' to go by.
-    mirror: true,
+    model: models.realtime(LIVE_MODEL),
+    // The camera as it is: the page mirrors what comes back (see the note at the top). false, not 'auto', which would
+    // mirror a front camera on its own.
+    mirror: false,
     retries: 2,
     capacityRetryBudgetMs: 20_000,
     initialState: { prompt: { text: livePrompt(g), enhance: false }, image: await asBlob(await onWhite(g.front)) },
@@ -83,7 +91,7 @@ async function viaFal(own: MediaStream, g: Garment, on: Events): Promise<Session
   const conn = fal.realtime.connect<Record<string, unknown>, FalMsg>(FAL_APP, {
     connectionKey: `mirror-${Date.now()}`,
     throttleInterval: 0,
-    tokenProvider: async () => (await token()).token,
+    tokenProvider: async () => (await token('fal')).token,
     tokenExpirationSeconds: 120,
     onError: () => on.end('failed'),
     onResult: async m => {
@@ -143,13 +151,15 @@ export function useLiveAi({ on, stream, garment }: { on: boolean; stream: MediaS
     let gone = false, timer = 0, startedAt = 0, own: MediaStream | null = null, s: Session | null = null;
     setState('connecting'); setLeft(LIVE_SECONDS);
     const end = (next: LiveAiState) => { if (!gone) stop(next); };
-    // A connect that never answers (queues, retries) gives up after 40 s instead of spinning forever.
-    const giveUp = window.setTimeout(() => { if (!startedAt) end('failed'); }, 40_000);
+    // A connect that never answers (queues, retries) gives up after 40 s instead of spinning forever, and for good: a
+    // session that turns up later is closed rather than billed after she was told it failed.
+    const giveUp = window.setTimeout(() => { if (!startedAt) { end('failed'); gone = true; s?.close(); } }, 40_000);
     const events: Events = {
-      remote: r => { const v = video.current; if (v) { v.srcObject = r; v.play().catch(() => {}); } },
-      reconnecting: () => setState(st => (st === 'live' ? 'reconnecting' : st)),
+      remote: r => { const v = video.current; if (v && !gone) { v.srcObject = r; v.play().catch(() => {}); } },
+      reconnecting: () => { if (!gone) setState(st => (st === 'live' ? 'reconnecting' : st)); },
       end,
       live: () => {
+        if (gone) return;
         setState('live');
         if (startedAt) return;
         // The minute starts with the first dressed frame, on our own clock.
