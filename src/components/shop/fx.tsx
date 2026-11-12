@@ -9,13 +9,14 @@ import { SPRING } from './tokens';
 
 gsap.registerPlugin(ScrollTrigger);
 
-/** Runs a GSAP setup for visitors who allow motion, and reverts it on unmount. */
-export function useScrollScene(scope: RefObject<HTMLElement | null>, setup: (root: HTMLElement) => void, deps: unknown[] = []) {
+/** Runs a GSAP setup for visitors who allow motion, and reverts it on unmount. The setup may return its own cleanup
+ *  (for what GSAP does not track, such as a class it added). */
+export function useScrollScene(scope: RefObject<HTMLElement | null>, setup: (root: HTMLElement) => void | (() => void), deps: unknown[] = []) {
   useLayoutEffect(() => {
     const root = scope.current;
     if (!root) return;
     const mm = gsap.matchMedia();
-    mm.add('(prefers-reduced-motion: no-preference)', () => { setup(root); });
+    mm.add('(prefers-reduced-motion: no-preference)', () => setup(root));
     return () => mm.revert();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

@@ -1,7 +1,8 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- transparent garment cut-outs and sample photographs */
 import gsap from 'gsap';
-import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from 'motion/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { AnimatePresence, animate, motion } from 'motion/react';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fill } from '@/lib/concierge';
@@ -12,85 +13,29 @@ import { useBoutique } from '../boutique/Boutique';
 import { useConcierge } from './concierge/useConcierge';
 import { FlipCard } from './FlipCard';
 import { SplitReveal, useScrollScene } from './fx';
-import { HomeHero } from './HomeHero';
 import { Icon, type IconName } from './Icon';
 import { Rack } from './Rack';
+import { StageHero } from './Stage';
+import { Story } from './Story';
 import { useShop } from './Shop';
 import { EASE, SPRING, cardBg, num, reveal } from './tokens';
 
-/** The home page: the cover, the rack, then one section for each thing the stylist does. The stylist itself floats over the whole shop. */
+/** The home page, try-on first: the stage (turn an abaya, put it on you), the story from the rail to you, the rack,
+ *  the size, the set, then the collection. The stylist itself floats over the whole shop. */
 export function HomePage() {
+  const b = useBoutique();
+  // A language change reflows the headings above the pinned story; every scroll scene below must be measured again.
+  useEffect(() => { const f = requestAnimationFrame(() => ScrollTrigger.refresh()); return () => cancelAnimationFrame(f); }, [b.lang]);
   return (
     <main className="ai-page">
-      <HomeHero />
+      <StageHero />
+      <Story />
       <Rack />
-      <Wear />
       <SizeScene />
       <TheSet />
       <Browse />
       <Close />
     </main>
-  );
-}
-
-/** Sample pairs: the customer photo beside the abaya the stylist dressed her in (public/images/tryon). */
-const SAMPLES = [{ id: 'noor', src: '/images/tryon/customer-noor.webp' }, { id: 'layal', src: '/images/tryon/customer-layal.webp' }];
-
-function Wear() {
-  const b = useBoutique();
-  const { c } = useShop();
-  const reduce = useReducedMotion();
-  const [i, setI] = useState(0);
-  const pos = useMotionValue(reduce ? 50 : 88);
-  const clip = useTransform(pos, v => `inset(0 0 0 ${v}%)`);
-  const left = useTransform(pos, v => `${v}%`);
-  const [val, setVal] = useState(50);
-  useMotionValueEvent(pos, 'change', v => setVal(Math.round(v)));
-  const hinted = useRef(false);
-  const hint = () => {
-    if (hinted.current || reduce) return;
-    hinted.current = true;
-    animate(pos, 42, { duration: 1.6, ease: EASE, delay: 0.2 });
-  };
-  const sample = SAMPLES[i];
-  const g = b.byId(sample.id);
-  return (
-    <section id="wear" className="ai-sec ai-wear">
-      <div className="ai-wrap ai-split">
-        <motion.div className="ai-copy" {...reveal}>
-          <p className="ai-eyebrow">{c.aiWearK}</p>
-          <SplitReveal className="ai-h2" text={c.aiWearT} />
-          <p className="ai-body">{c.aiWearB}</p>
-          <div className="ai-swatches" role="group" aria-label={c.aiWearPick}>
-            {SAMPLES.map((s, n) => {
-              const piece = b.byId(s.id);
-              return (
-                <button key={s.id} type="button" className="mz-reset ai-swatch" aria-pressed={n === i} aria-label={piece ? b.tx(piece.name) : s.id} title={piece ? b.tx(piece.name) : undefined} onClick={() => setI(n)}>
-                  {piece?.front && <img src={piece.front} alt="" loading="lazy" decoding="async" />}
-                </button>
-              );
-            })}
-          </div>
-          <div className="ai-ctas">
-            <Link href={`/fitting-room?g=${sample.id}`} className="mz-btn is-main mz-pill">{c.aiWearPhoto}<Icon name="next" size={20} className="mz-arrow" /></Link>
-            <Link href={`/fitting-room?g=${sample.id}&live=1`} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
-          </div>
-        </motion.div>
-        <motion.div className="ai-compare" dir="ltr" onViewportEnter={hint} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={SPRING.soft}>
-          <img src="/images/tryon/customer.webp" alt={c.aiWearAltBefore} loading="lazy" decoding="async" draggable={false} />
-          <AnimatePresence initial={false}>
-            <motion.div key={sample.src} className="ai-compare__after" style={{ clipPath: clip }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
-              <img src={sample.src} alt={`${c.aiWearAltAfter} ${g ? b.tx(g.name) : ''}`} loading="lazy" decoding="async" draggable={false} />
-            </motion.div>
-          </AnimatePresence>
-          <motion.span className="ai-compare__line" style={{ left }} aria-hidden="true"><span><Icon name="swap" size={20} /></span></motion.span>
-          <span className="ai-compare__tag is-before" aria-hidden="true">{c.aiWearBefore}</span>
-          <span className="ai-compare__tag is-after" aria-hidden="true">{c.aiWearAfter}</span>
-          <span className="ai-compare__tag is-sample">{c.aiWearSample}</span>
-          <input type="range" min={4} max={96} value={val} aria-label={c.aiWearDrag} onChange={e => pos.set(Number(e.target.value))} />
-        </motion.div>
-      </div>
-    </section>
   );
 }
 
@@ -162,11 +107,34 @@ function TheSet() {
   const [occ, setOcc] = useState(a.occasion);
   // The occasion she named in the conversation carries down to the board.
   useEffect(() => setOcc(a.occasion), [a.occasion]);
+  // On a phone the occasions scroll sideways: keep the chosen one in view, inside the row only (the page stays put).
+  const occRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = occRow.current, on = row?.querySelector<HTMLElement>('[aria-pressed=true]');
+    if (!row || !on || row.scrollWidth <= row.clientWidth) return;
+    const rr = row.getBoundingClientRect(), br = on.getBoundingClientRect();
+    row.scrollBy({ left: br.left + br.width / 2 - (rr.left + rr.width / 2), behavior: 'smooth' });
+  }, [occ]);
   const g = a.garment;
   const picks = useMemo(() => (g ? setFor(byRole, g, occ) : {}), [byRole, g, occ]);
   const total = g ? lookTotal(g, picks, id => b.byId(id)) : 0;
   const totalEl = useRef<HTMLElement>(null);
   const shown = useRef(total);
+  const section = useRef<HTMLElement>(null);
+  // Wide screens: the pieces start tucked behind the model and fan out to their places as the board scrolls in.
+  useScrollScene(section, root => {
+    gsap.matchMedia().add('(min-width: 1000px)', () => {
+      const slots = gsap.utils.toArray<HTMLElement>('.ai-fan__slot', root);
+      const turn = [-3, 2, -2, 3], lift = [-6, 8, 8, -6];
+      slots.forEach((s, i) => {
+        const toCentre = (i < 2 ? 1 : -1) * (b.dir === 'rtl' ? -1 : 1);
+        gsap.fromTo(s, { xPercent: toCentre * 70, rotate: 0, scale: 0.78, autoAlpha: 0 }, {
+          xPercent: 0, rotate: turn[i], y: lift[i], scale: 1, autoAlpha: 1, ease: 'power2.out',
+          scrollTrigger: { trigger: root.querySelector('.ai-fan'), start: 'top 85%', end: 'top 35%', scrub: 0.6 },
+        });
+      });
+    });
+  }, [b.dir, g?.id]);
   // The total runs to its new value when the occasion changes.
   useEffect(() => {
     const el = totalEl.current;
@@ -175,10 +143,26 @@ function TheSet() {
     return () => ctl.stop();
   }, [total, b]);
   if (!g) return null;
-  const items = ACCESSORY_KINDS.map(k => ({ k, p: picks[k] ? b.byId(picks[k]) : undefined })).filter(x => x.p);
+  const items = ACCESSORY_KINDS.map(k => ({ k, p: picks[k] ? b.byId(picks[k]) : undefined }));
   const photo = g.wornFront || g.front;
+  const slot = ({ k, p }: (typeof items)[number], i: number) => (
+    <div key={k} className={`ai-fan__slot is-${i}`}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {p && (
+          <motion.div key={p.id} initial={{ opacity: 0, y: 14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ ...SPRING.soft, delay: i * 0.05 }}>
+            <button type="button" className="mz-reset ai-item" onClick={() => b.openProduct(p.id)}>
+              <span className="ai-item__pic">{p.front && <img src={p.front} alt="" loading="lazy" decoding="async" />}</span>
+              <span className="ai-item__role">{b.t.roles[k]}</span>
+              <span className="ai-item__name">{b.tx(p.name)}</span>
+              <span className="ai-item__price">{b.price(effectivePrice(p))}</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
   return (
-    <section id="set" className="ai-sec ai-set">
+    <section ref={section} id="set" className="ai-sec ai-set">
       <div className="ai-wrap">
         <motion.div className="ai-set__head" {...reveal}>
           <div className="ai-copy">
@@ -186,28 +170,18 @@ function TheSet() {
             <SplitReveal className="ai-h2" text={c.aiSetT} />
             <p className="ai-body">{c.aiSetB}</p>
           </div>
-          <div className="ai-occ" role="group" aria-label={c.aiSetOccasion}>
+          <div ref={occRow} className="ai-occ" role="group" aria-label={c.aiSetOccasion}>
             {b.t.occ.map((l, i) => <button key={l} type="button" className="mz-reset" aria-pressed={occ === i} onClick={() => setOcc(i)}>{l}</button>)}
           </div>
         </motion.div>
-        <div className="ai-board">
-          <motion.div className="ai-board__model" style={{ background: cardBg(g.colors[0]?.hex) }} {...reveal}>
+        {/* The look: the abaya in the middle, its pieces fanned out on either side. On wide screens they open out from
+            behind the model as the board scrolls in (GSAP moves the slots; Motion swaps what is in them). */}
+        <div className="ai-fan">
+          <div className="ai-fan__side">{items.slice(0, 2).map((x, i) => slot(x, i))}</div>
+          <div className="ai-fan__model" style={{ background: cardBg(g.colors[0]?.hex) }}>
             {photo && <img src={photo} alt={`${c.wearing} ${b.tx(g.name)}`} loading="lazy" decoding="async" draggable={false} />}
-          </motion.div>
-          <ul className="ai-board__items">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {items.map(({ k, p }, i) => (
-                <motion.li key={p!.id} layout initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ ...SPRING.soft, delay: i * 0.05 }}>
-                  <button type="button" className="mz-reset ai-item" onClick={() => b.openProduct(p!.id)}>
-                    <span className="ai-item__pic">{p!.front && <img src={p!.front} alt="" loading="lazy" decoding="async" />}</span>
-                    <span className="ai-item__role">{b.t.roles[k]}</span>
-                    <span className="ai-item__name">{b.tx(p!.name)}</span>
-                    <span className="ai-item__price">{b.price(effectivePrice(p!))}</span>
-                  </button>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
+          </div>
+          <div className="ai-fan__side">{items.slice(2).map((x, i) => slot(x, i + 2))}</div>
         </div>
         <div className="ai-set__foot">
           <p className="ai-total is-big"><span>{c.aiTotal}</span><strong ref={totalEl}>{b.price(total)}</strong></p>
