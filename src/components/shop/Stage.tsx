@@ -108,7 +108,10 @@ export function StageHero() {
             e.preventDefault(); keyed.current = e.target instanceof HTMLElement && e.target.classList.contains('st-piece');
             go(e.key === 'ArrowLeft' ? -1 : 1);
           }}>
-          <motion.div className="st-world" dir="ltr" style={{ rotateX: rx, rotateY: ry }}
+          {/* The drag surface is a plain layer: in the 3D world the pieces stand behind its own plane, where they would not
+              be hit, so the world lets the pointer through to them and this layer only reads drags and the tilt. A drag is
+              finished on the window, so letting go outside the stage still counts and leaves nothing behind. */}
+          <div className="st-drag"
             // Hover holds the turn only over the stage itself; the copy beside it does not stop it.
             onPointerEnter={e => { if (e.pointerType === 'mouse') setHovered(true); }}
             onPointerLeave={e => { if (e.pointerType === 'mouse') { setHovered(false); rx.set(0); ry.set(0); } }}
@@ -117,17 +120,20 @@ export function StageHero() {
               const r = e.currentTarget.getBoundingClientRect();
               ry.set(((e.clientX - r.left) / r.width - 0.5) * 10); rx.set(-((e.clientY - r.top) / r.height - 0.5) * 6);
             }}
-            onPointerDown={e => { dragged.current = false; drag.current = { x: e.clientX, id: e.pointerId }; e.currentTarget.setPointerCapture(e.pointerId); }}
-            onPointerUp={e => {
-              const d = drag.current; drag.current = null;
-              if (!d || d.id !== e.pointerId) return;
-              const dx = e.clientX - d.x;
-              if (Math.abs(dx) > SWIPE) { dragged.current = true; go(dx < 0 ? 1 : -1); }
+            onPointerDown={e => {
+              if (e.button !== 0) return;
+              dragged.current = false; drag.current = { x: e.clientX, id: e.pointerId };
+              const end = (ev: PointerEvent) => {
+                if (ev.pointerId !== drag.current?.id) return;
+                window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end);
+                const dx = ev.clientX - drag.current.x; drag.current = null;
+                if (ev.type === 'pointerup' && Math.abs(dx) > SWIPE) { dragged.current = true; go(dx < 0 ? 1 : -1); }
+              };
+              window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
             }}
-            onPointerCancel={() => { drag.current = null; }}
-            onLostPointerCapture={() => { drag.current = null; }}
             // A drag ends in a click on whatever piece it started on; that click must not also turn or move it.
             onClickCapture={e => { if (dragged.current) { dragged.current = false; e.preventDefault(); e.stopPropagation(); } }}>
+          <motion.div className="st-world" dir="ltr" style={{ rotateX: rx, rotateY: ry }}>
             <span className="st-floor" aria-hidden="true" />
             {pieces.map((p, i) => {
               const d = offset(i), far = Math.abs(d), on = d === 0, shown = far <= 2;
@@ -155,6 +161,7 @@ export function StageHero() {
               );
             })}
           </motion.div>
+          </div>
 
           <div className="st-caption">
             <p className="st-caption__name" aria-live={manual ? 'polite' : 'off'} aria-atomic="true">
