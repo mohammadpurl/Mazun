@@ -3,6 +3,7 @@
 import gsap from 'gsap';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
+import { fittingHref, liveHref } from '@/lib/paths';
 import { useBoutique } from '../boutique/Boutique';
 import { useConcierge } from './concierge/useConcierge';
 import { SplitReveal, useScrollScene } from './fx';
@@ -65,7 +66,8 @@ export function Story() {
   const steps = [
     { t: c.story1T, d: c.story1B },
     { t: c.story2T, d: c.story2B },
-    { t: c.story3T, d: c.story3B, note: c.aiWearSample },
+    // While photo try-on is off, the third step says it is coming rather than promising it.
+    { t: c.story3T, d: b.ai.photo ? c.story3B : c.story3BSoon, note: b.ai.photo ? c.aiWearSample : c.aiWearSampleSoon },
   ];
 
   return (
@@ -88,8 +90,9 @@ export function Story() {
               </ol>
             </div>
             <div className="ai-ctas">
-              <Link href={`/fitting-room?g=${g.id}`} className="mz-btn is-main mz-pill">{c.aiWearPhoto}<Icon name="next" size={20} className="mz-arrow" /></Link>
-              <Link href={`/fitting-room?g=${g.id}&live=1`} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
+              {/* Her own photo only when an image AI can dress it; otherwise the same piece on the house model. */}
+              <Link href={fittingHref(g.id, b.ai.photo)} className="mz-btn is-main mz-pill">{b.ai.photo ? c.aiWearPhoto : c.seeOnModel}<Icon name="next" size={20} className="mz-arrow" /></Link>
+              <Link href={liveHref(g.id)} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
             </div>
             <button type="button" className="mz-reset mz-link is-main st-story__size" onClick={() => { a.findSize(); a.openChat(); }}><Icon name="ruler" size={18} />{c.storySize}</button>
           </div>

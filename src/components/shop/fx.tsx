@@ -1,10 +1,11 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- FadeImg wraps catalogue cut-outs */
 /* Shared motion pieces. Motion (framer-motion) owns component motion; GSAP owns scroll scenes. They never animate
    the same element and property. Both stand still under prefers-reduced-motion. */
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { motion } from 'motion/react';
-import { Fragment, useLayoutEffect, useRef, type RefObject } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type ImgHTMLAttributes, type ReactNode, type RefObject } from 'react';
 import { SPRING } from './tokens';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -60,5 +61,22 @@ export function Ornament({ className }: { className?: string }) {
       <path d="M191.5 3.5H208.5V20.5H191.5Z" pathLength={1} strokeDasharray="1" />
       <circle cx="200" cy="12" r="2.2" fill="currentColor" stroke="none" />
     </svg>
+  );
+}
+
+/** A picture that fades in once it has loaded instead of popping in. Until then its state is `wait`, and the frame
+ *  around it shows a soft shimmer (shop.css, `.mz-fade`), so a slow phone never shows a blank tile. The state belongs to
+ *  one address: a new `src` waits (and fades) again. A picture that fails shows `fallback`, if given, in its place. */
+export function FadeImg({ className, onLoad, onError, onReady, fallback, ...rest }: ImgHTMLAttributes<HTMLImageElement> & { fallback?: ReactNode; /** Called once something is showing: the picture (loaded now or from the cache), or its fallback. */ onReady?: () => void }) {
+  const [seen, setSeen] = useState<{ src: unknown; state: 'ok' | 'bad' } | null>(null);
+  const state = seen && seen.src === rest.src ? seen.state : 'wait';
+  const mark = (next: 'ok' | 'bad') => { setSeen({ src: rest.src, state: next }); if (next === 'ok' || fallback !== undefined) onReady?.(); };
+  if (state === 'bad' && fallback !== undefined) return <>{fallback}</>;
+  return (
+    // alt comes from the caller in rest
+    <img {...rest} className={`mz-fade${className ? ` ${className}` : ''}`} data-state={state}
+      // An image already in the cache can finish before React attaches onLoad (on hydration), so it is asked on mount.
+      ref={el => { if (el?.complete && state === 'wait') mark(el.naturalWidth || /\.svg(\?|$)/i.test(el.src) ? 'ok' : 'bad'); }}
+      onLoad={e => { mark('ok'); onLoad?.(e); }} onError={e => { mark('bad'); onError?.(e); }} />
   );
 }

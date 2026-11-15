@@ -249,7 +249,7 @@ export function ConciergeProvider({ children }: { children: ReactNode }) {
         return;
       }
       case 'tryon':
-        say(false, reply || fill(c.aiTryReply, { name }), 'tryon');
+        say(false, reply || fill(b.ai.photo ? c.aiTryReply : c.aiTryReplySoon, { name }), 'tryon');
         reach(2);
         return;
       default:

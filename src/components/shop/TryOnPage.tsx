@@ -12,6 +12,7 @@ import { useBoutique } from '../boutique/Boutique';
 import { InfoDialog, productHref } from './Chrome';
 import { savedSize } from './concierge/saved';
 import { useOpenChat } from './concierge/useConcierge';
+import { FadeImg } from './fx';
 import { LiveMirror } from './LiveMirror';
 import { Icon, type DuoIconName, type IconName } from './Icon';
 import { useShop } from './Shop';
@@ -32,14 +33,60 @@ function HouseModel({ g, label }: { g?: Garment; label: string }) {
   );
 }
 
+/** The house model wearing a piece: its photo made in advance (`wornFront`), fading in once it has loaded while the
+ *  studio shimmers. A piece with no such photo, or whose photo fails, shows its product photo alone and says so; with
+ *  no picture at all, the dress form. `tagged` adds the note that says what the picture is. */
+function ModelFigure({ g, failed, onFail, onShown, tagged }: { g?: Garment; failed: boolean; onFail: () => void; onShown: (src: string) => void; tagged: boolean }) {
+  const b = useBoutique();
+  const { c } = useShop();
+  const reduce = useReducedMotion();
+  const worn = !!g?.wornFront && !failed;
+  const src = worn ? g!.wornFront : g?.front;
+  return (
+    <>
+      <span className="mz-studio__floor" />
+      {g && src
+        ? <FadeImg key={src} className="mz-studio__photo is-worn" src={src} alt={worn ? `${c.wearing} ${b.tx(g.name)}` : b.tx(g.name)} draggable={false}
+            fetchPriority="high" onReady={() => onShown(src)} onError={worn ? onFail : undefined}
+            fallback={worn ? undefined : <HouseModel label={c.modelTag} />} />
+        : <HouseModel label={c.modelTag} />}
+      {tagged && g && (
+        <motion.span className="mz-tag is-note" dir={b.dir} initial={reduce ? false : { opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.soft}>
+          {worn ? `${c.modelTag} · ${c.sampleTag}` : c.productTag}
+        </motion.span>
+      )}
+    </>
+  );
+}
+
+const MODEL: Source = { kind: 'model' };
+
+/** True on a data-saving or 2G connection, where nothing is fetched ahead. */
+function thrifty() {
+  const n = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !!n?.saveData || /2g/.test(n?.effectiveType ?? '');
+}
+/** Runs `fn` when the browser is idle (or soon, where it cannot say); returns the cancel. Skipped on a thrifty connection. */
+function whenIdle(fn: () => void): () => void {
+  if (thrifty()) return () => {};
+  if ('requestIdleCallback' in window) { const id = requestIdleCallback(fn, { timeout: 3000 }); return () => cancelIdleCallback(id); }
+  const t = setTimeout(fn, 1200);
+  return () => clearTimeout(t);
+}
+const warm = (src: string) => { new Image().src = src; };
+
 /** The fitting room: photo → abaya → preview. A real photo goes to the AI try-on service when it is connected
- *  (`/api/ai`, action `tryon`); the house model shows the abaya on the illustrated model. Before and after are compared
- *  with a slider. Leaving the preview cancels a try-on that is still running. */
+ *  (`/api/ai`, action `tryon`) and before and after are compared with a slider. The house model wears the abaya in a
+ *  photo made in advance (`wornFront`), shown at once and tagged as illustrative: no AI is pretended. With no image AI
+ *  at all (`ai.photo` off), her own photo is not offered (it could not be dressed); the house model and the live
+ *  mirror are. Leaving the preview cancels a try-on that is still running. */
 export function TryOnPage() {
   const b = useBoutique();
   const openChat = useOpenChat();
   const query = useSearchParams();
-  const queryPiece = query.get('g'), queryLive = query.get('live');
+  const queryPiece = query.get('g'), queryLive = query.get('live'), queryModel = query.get('model');
+  /** Whether her own photo can be dressed: the shop's image AI, or the free public model. */
+  const photoAI = b.ai.photo;
   const { c, picks } = useShop();
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(1);
@@ -56,6 +103,14 @@ export function TryOnPage() {
   const [guide, setGuide] = useState(false);
   const [live, setLive] = useState(false);
   const fromLive = useRef(false);
+  /** The piece whose house-model photo failed to load: it shows its product photo instead. */
+  const [wornBad, setWornBad] = useState<string | null>(null);
+  const wornWarm = useRef(false);
+  /** The house-model picture last seen on screen: until the current one arrives the studio is marked busy. */
+  const [shownSrc, setShownSrc] = useState<string | null>(null);
+  /** Set when step two opens from the start card on a phone: the tiles are brought into view once they are there. */
+  const wantGrid = useRef(false);
+  const studio = useRef<HTMLDivElement>(null);
   const run = useRef(0);
   const ctrl = useRef<AbortController | null>(null);
   const dragDepth = useRef(0);
@@ -80,6 +135,24 @@ export function TryOnPage() {
   }, [queryPiece]); // eslint-disable-line react-hooks/exhaustive-deps
   // Apart from the piece: taking live= off the address must not put back a piece she changed inside the mirror.
   useEffect(() => { if (queryLive === '1') setLive(true); }, [queryLive]);
+  // A link asking for the house model (model=1, used while photo try-on is off) shows the named piece on her at once,
+  // unless it is already on screen; without a valid piece she chooses one (and model= leaves the address).
+  // Keep this effect after the piece effect above: that one moves step 3 back to 2, and this one's preview must win.
+  const goneSaid = useRef<string | null>(null);
+  useEffect(() => {
+    if (queryModel !== '1') return;
+    const named = b.byId(queryPiece);
+    if (named?.kind === 'garment') {
+      if (!(source?.kind === 'model' && step === 3 && gid === named.id)) seeOnModel(named);
+      return;
+    }
+    // A link to a piece that has left the collection says so, rather than quietly showing another.
+    if (queryPiece && goneSaid.current !== queryPiece) { goneSaid.current = queryPiece; b.toast(c.pieceGone); }
+    cancelRun(); setSource(MODEL); setResult(null); setStep(2);
+    const u = new URL(location.href);
+    u.searchParams.delete('model');
+    history.replaceState(null, '', u);
+  }, [queryModel, queryPiece]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const latestPick = [...picks].reverse().map(id => b.byId(id)).find(x => x?.kind === 'garment');
     if (latestPick) setGid(g => g ?? latestPick.id);
@@ -99,6 +172,29 @@ export function TryOnPage() {
   }, [live]);
 
   const g = b.byId(gid) ?? garments[0];
+  // The address follows the house model's result: ?g=<piece>&model=1 while it is on screen, so Back from the piece's
+  // page or a reload shows it again; leaving the result takes model= off, so the next link asking for it still works.
+  const wasOnModel = useRef(false);
+  const onModel = source?.kind === 'model' && step === 3 && !!g;
+  useEffect(() => {
+    if (!onModel && !wasOnModel.current) return;
+    wasOnModel.current = onModel;
+    const u = new URL(location.href);
+    if (onModel && g) { u.searchParams.set('g', g.id); u.searchParams.set('model', '1'); } else u.searchParams.delete('model');
+    if (u.href !== location.href) history.replaceState(null, '', u);
+  }, [onModel, g?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** The picture the house model's figure is showing now (her worn photo, or the product photo if that failed). */
+  const figSrc = g ? (g.wornFront && wornBad !== g.id ? g.wornFront : g.front) : '';
+  // The abaya cut-outs (small) load when the page is idle, so step two's tiles are ready when she gets there. The house
+  // model's photos follow only after the one she is looking at has arrived (warmWorn), so they never compete with it.
+  useEffect(() => whenIdle(() => garments.forEach(x => { if (x.front) warm(x.front); })), [garments]);
+  const stopWarm = useRef(() => {});
+  const warmWorn = () => {
+    if (wornWarm.current) return;
+    wornWarm.current = true;
+    stopWarm.current = whenIdle(() => garments.slice(0, 12).forEach(x => { if (x.wornFront) warm(x.wornFront); }));
+  };
+  useEffect(() => () => stopWarm.current(), []);
   const cancelRun = () => { run.current++; ctrl.current?.abort(); ctrl.current = null; setDressing(false); };
   useEffect(() => () => { ctrl.current?.abort(); }, []);
   const goStep = (n: Step) => { if (n === step) return; if (n === 3) preview(); else { cancelRun(); setStep(n); } };
@@ -111,14 +207,34 @@ export function TryOnPage() {
     finally { setBusy(false); }
   }
 
-  async function preview() {
-    if (!source || !g) return;
+  /** Scrolls an element to just under the sticky header, unless most of it is already in view. */
+  function bringIntoView(el: HTMLElement | null) {
+    if (!el) return;
+    const bar = document.querySelector('.mz-header');
+    const head = bar && getComputedStyle(bar).position !== 'relative' ? bar.getBoundingClientRect().bottom : 0;
+    const r = el.getBoundingClientRect();
+    const seen = Math.min(r.bottom, innerHeight) - Math.max(r.top, head);
+    if (r.top >= head - 1 && seen >= Math.min(r.height, innerHeight - head) * 0.6) return;
+    scrollTo({ top: scrollY + r.top - head - 12, behavior: reduce ? 'auto' : 'smooth' });
+  }
+  /** Brings the studio into view when the preview starts: on a phone the button sits below it, and without this she
+   *  would be left looking at the sizes and the footer while the result appears above. */
+  const showStudio = () => requestAnimationFrame(() => bringIntoView(studio.current));
+
+  async function preview(src: Source = source, piece: Garment | undefined = g) {
+    if (!src || !piece) return;
     cancelRun();
-    setStep(3); setDressing(true); setResult(null); setFailed(false); setAdded(null); clip.set(100);
+    setStep(3); setFailed(false); setAdded(null); clip.set(100);
     // A free-size piece has nothing to choose, so its one size is picked for the customer.
     // The size the stylist already found for this piece comes along.
-    const fromChat = savedSize(g.id);
-    setSize(s => (g.sizes.some(x => x.n === s && x.ok) ? s : g.sizes.length === 1 && g.sizes[0].n === ONE_SIZE && g.sizes[0].ok ? ONE_SIZE : g.sizes.some(x => x.n === fromChat && x.ok) ? fromChat : null));
+    const fromChat = savedSize(piece.id);
+    setSize(s => (piece.sizes.some(x => x.n === s && x.ok) ? s : piece.sizes.length === 1 && piece.sizes[0].n === ONE_SIZE && piece.sizes[0].ok ? ONE_SIZE : piece.sizes.some(x => x.n === fromChat && x.ok) ? fromChat : null));
+    showStudio();
+    // The house model's photo is made in advance, and without an image AI her own photo cannot be dressed: neither
+    // has anything to wait for, so neither plays the "dressing" scene. (Her own photo without an image AI cannot be
+    // reached today, since nothing asks for one; the branch keeps that state honest if it ever is.)
+    if (src.kind === 'model' || !photoAI) { setResult(src.kind === 'model' ? 'model' : 'pending'); return; }
+    setDressing(true); setResult(null);
     const id = run.current;
     const minWait = new Promise(r => setTimeout(r, reduce ? 300 : 2800));
     const done = (img: string) => {
@@ -126,15 +242,13 @@ export function TryOnPage() {
       setResult(img); setDressing(false);
       if (reduce || img === 'pending') clip.set(50); else animate(clip, 50, { duration: 1.4, ease: EASE });
     };
-    if (source.kind === 'model') { await minWait; done('model'); return; }
-    if (!b.ai.image && !b.ai.free) { await minWait; done('pending'); return; }
     const ac = new AbortController();
     ctrl.current = ac;
     try {
       // The shop's own image AI when it has one, otherwise the free public model (slower, rationed).
       const r = b.ai.image
-        ? await fetch('/api/ai', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'tryon', person: source.url, garmentId: g.id, color: 0, lang: b.lang }) })
-        : await fetch('/api/tryon/free', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ person: source.url, garmentId: g.id }) });
+        ? await fetch('/api/ai', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'tryon', person: src.url, garmentId: piece.id, color: 0, lang: b.lang }) })
+        : await fetch('/api/tryon/free', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ person: src.url, garmentId: piece.id }) });
       if (r.status === 429) { b.toast(b.t.rateLimited); throw new Error('rate'); }
       if (!r.ok) { const { error } = await r.json().catch(() => ({ error: '' })); throw new Error(error === 'busy' || r.status === 503 ? 'busy' : String(r.status)); }
       const { image } = await r.json();
@@ -153,6 +267,18 @@ export function TryOnPage() {
     fromLive.current = false;
     preview();
   }, [source, gid]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** Shows a piece on the house model straight away: from the start card, a model=1 link, the mirror, a failed photo. */
+  function seeOnModel(piece: Garment | undefined = g) {
+    if (piece) setGid(piece.id);
+    setSource(MODEL);
+    preview(MODEL, piece);
+  }
+  /** The house model with no piece named yet: she picks one in step two (on a phone the tiles are scrolled to). */
+  function chooseOnModel() {
+    cancelRun(); setSource(MODEL); setResult(null);
+    wantGrid.current = true;
+    setStep(2);
+  }
 
   function add() {
     if (!g) return;
@@ -180,7 +306,7 @@ export function TryOnPage() {
   const realImage = result && result !== 'model' && result !== 'pending' ? result : null;
   const imageExt = realImage?.match(/^data:image\/(png|jpeg|webp)/)?.[1]?.replace('jpeg', 'jpg') ?? 'png';
 
-  const steps: [Step, string][] = [[1, c.s1], [2, c.s2], [3, c.s3]];
+  const steps: [Step, string][] = [[1, photoAI ? c.s1 : c.s1Soon], [2, c.s2], [3, c.s3]];
   const stepOf = c.stepOf.replace('{n}', num(step, b.lang));
   const fileA = useRef<HTMLInputElement>(null), fileB = useRef<HTMLInputElement>(null);
   const openGuide = () => { if (g?.chart) b.openSize({ garmentId: g.id, onUse: s => { setSize(s); setNeed(false); } }); else setGuide(true); };
@@ -190,7 +316,7 @@ export function TryOnPage() {
 
   const primary: { label: string; icon: IconName; off: boolean; go: () => void } = step === 1
     ? { label: c.continue, icon: 'next', off: !source, go: () => setStep(2) }
-    : step === 2 ? { label: c.seePreview, icon: 'hanger', off: !g, go: preview }
+    : step === 2 ? { label: c.seePreview, icon: 'hanger', off: !g, go: () => preview() }
     : { label: soldOut ? c.soldOut : c.addToBag, icon: 'bag', off: dressing || soldOut, go: add };
 
   return (
@@ -201,7 +327,7 @@ export function TryOnPage() {
         <div className="mz-try-page__head">
           <div>
             <p className="mz-eyebrow is-icon"><Icon name="hanger" size={20} />{c.eyebrow}</p>
-            <h1>{c.title}</h1>
+            <h1>{photoAI ? c.title : c.titleSoon}</h1>
           </div>
           <ol aria-label={c.stepsLabel} className="mz-steps-nav">
             {steps.map(([n, label], i) => {
@@ -224,13 +350,13 @@ export function TryOnPage() {
         </div>
 
         <div className="mz-try-page__body">
-          <div className={`mz-studio${drag ? ' is-drag' : ''}`} dir="ltr"
-            onDragEnter={e => { e.preventDefault(); dragDepth.current++; if (step === 1) setDrag(true); }}
+          <div ref={studio} className={`mz-studio${drag ? ' is-drag' : ''}`} dir="ltr" aria-busy={dressing || (source?.kind === 'model' && !!figSrc && shownSrc !== figSrc)}
+            onDragEnter={e => { e.preventDefault(); dragDepth.current++; if (step === 1 && photoAI) setDrag(true); }}
             onDragOver={e => e.preventDefault()}
             onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDrag(false); }}
-            onDrop={e => { e.preventDefault(); dragDepth.current = 0; setDrag(false); if (step === 1) choose(e.dataTransfer.files?.[0]); }}>
+            onDrop={e => { e.preventDefault(); dragDepth.current = 0; setDrag(false); if (step !== 1) return; if (photoAI) choose(e.dataTransfer.files?.[0]); else if (e.dataTransfer.files?.length) b.toast(c.photoSoon); }}>
             <AnimatePresence mode="wait">
-              {!source && (
+              {!source && (photoAI ? (
                 <motion.div key="drop" className="mz-drop" dir={b.dir} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6, ease: EASE }}>
                   <motion.span className="mz-drop__ic" aria-hidden="true" animate={pulse} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}><Icon name="yourPhoto" className="is-big" /></motion.span>
                   <p className="mz-drop__title"><span className="mz-only-wide-inline">{c.dropTitle}</span><span className="mz-only-phone">{c.dropTitleM}</span></p>
@@ -243,28 +369,49 @@ export function TryOnPage() {
                   </div>
                   <p className="mz-drop__formats">{c.formats}</p>
                 </motion.div>
-              )}
+              ) : (
+                // No image AI: her own photo could not be dressed, so it is not asked for. The house model and the live
+                // mirror (which runs on the phone itself) are offered, and she is told plainly that her photo comes later.
+                <motion.div key="drop-soon" className="mz-drop is-soon" dir={b.dir} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6, ease: EASE }}>
+                  <span className="mz-drop__ic" aria-hidden="true"><Icon name="model" className="is-big" /></span>
+                  <p className="mz-drop__title">{c.dropTitleSoon}</p>
+                  <div className="mz-drop__btns">
+                    {/* A piece already named (by a link or the stylist) is shown on the model at once; otherwise she picks one. */}
+                    <button type="button" className="mz-reset mz-btn is-main" onClick={() => { if (gid) seeOnModel(); else chooseOnModel(); }}><Icon name="model" size={20} />{c.seeOnModel}</button>
+                    <button type="button" className="mz-reset mz-btn is-outline" onClick={() => setLive(true)}><Icon name="camera" size={20} />{c.liveCta}</button>
+                  </div>
+                  <p className="mz-drop__formats">{c.photoSoon}</p>
+                </motion.div>
+              ))}
               {source && (
                 <motion.div key="fig" className="mz-studio__fig" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, ease: EASE }}>
-                  {source.kind === 'own' ? <img className="mz-studio__photo" src={source.url} alt={c.yourPhoto} /> : <><span className="mz-studio__floor" /><HouseModel label={c.modelTag} /></>}
+                  {/* The house model wears the chosen piece from the moment she is chosen: no blank dress form. */}
+                  {source.kind === 'own'
+                    ? <img className="mz-studio__photo" src={source.url} alt={c.yourPhoto} />
+                    : <ModelFigure g={g} failed={wornBad === g?.id} onFail={() => setWornBad(g?.id ?? null)} onShown={s => { setShownSrc(s); if (s === g?.wornFront) warmWorn(); }} tagged />}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {source && step === 3 && !dressing && result && (
+            {/* The house model's result is the figure itself (ModelFigure above); only her own photo gets a layer over it. */}
+            {source?.kind === 'own' && step === 3 && !dressing && result && (
               <>
-                {/* Until a real result exists there is nothing to compare, so the note shows whole, without the slider. */}
-                <motion.div className="mz-studio__after" style={result === 'pending' ? undefined : { clipPath }}>
-                  {result === 'model' && <><span className="mz-studio__floor" /><HouseModel g={g} label={g ? `${c.wearing} ${b.tx(g.name)}` : c.modelTag} /></>}
+                {/* Only a real result is compared with the slider; a note shows whole. */}
+                <motion.div className="mz-studio__after" style={realImage ? { clipPath } : undefined}>
                   {realImage && <img className="mz-studio__photo" src={realImage} alt={`${c.after} — ${g ? b.tx(g.name) : ''}`} />}
-                  {result === 'pending' && source.kind === 'own' && (
+                  {result === 'pending' && (
                     <>
                       <img className="mz-studio__photo is-veiled" src={source.url} alt="" />
-                      <div className="mz-studio__pending" dir={b.dir}>{g?.front && <img src={g.front} alt="" />}<p>{failed === 'busy' ? c.freeBusy : failed ? b.t.errT : c.ownPlaceholder}</p>{failed && <button type="button" className="mz-reset mz-btn is-main" onClick={preview}><Icon name="again" size={18} />{c.tryAgain}</button>}</div>
+                      <div className="mz-studio__pending" dir={b.dir}>
+                        {g?.front && <img src={g.front} alt="" />}
+                        <p>{!photoAI ? c.photoSoon : failed === 'busy' ? c.freeBusy : failed ? b.t.errT : c.ownPlaceholder}</p>
+                        {failed && photoAI && <button type="button" className="mz-reset mz-btn is-main" onClick={() => preview()}><Icon name="again" size={18} />{c.tryAgain}</button>}
+                        {!photoAI && <button type="button" className="mz-reset mz-btn is-main" onClick={() => seeOnModel()}><Icon name="model" size={18} />{c.seeOnModel}</button>}
+                      </div>
                     </>
                   )}
                 </motion.div>
-                {result !== 'pending' && (
+                {realImage && (
                   <>
                     <motion.span className="mz-studio__split" style={{ left: splitLeft }} aria-hidden="true" />
                     <span className="mz-tag is-start">{c.before}</span>
@@ -282,14 +429,15 @@ export function TryOnPage() {
                 <b className="tl" /><b className="tr" /><b className="bl" /><b className="br" />
               </motion.div>
             )}
-            {source && step === 1 && (
-              <motion.span className="mz-source" dir={b.dir} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.soft}><Icon name="done" size={18} />{source.kind === 'own' ? c.photoReady : c.modelReady}</motion.span>
+            {/* For the house model the figure's own tag says what it is; this chip is for her photo. */}
+            {source?.kind === 'own' && step === 1 && (
+              <motion.span className="mz-source" dir={b.dir} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.soft}><Icon name="done" size={18} />{c.photoReady}</motion.span>
             )}
             <AnimatePresence>
-              {step === 2 && g && (
+              {step === 2 && g && source?.kind === 'own' && (
                 <motion.div key={g.id} className="mz-chosen" dir={b.dir} initial={{ opacity: 0, y: 18, rotateY: -12 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} exit={{ opacity: 0, y: 10 }} transition={SPRING.soft}>
                   <span>{c.selected}</span>
-                  {g.front && <img src={g.front} alt="" />}
+                  {g.front && <FadeImg src={g.front} alt="" draggable={false} />}
                   <b>{b.tx(g.name)}</b>
                 </motion.div>
               )}
@@ -309,25 +457,31 @@ export function TryOnPage() {
               <motion.div key={`${step}-${dressing}`} className="mz-panel__step" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={SPRING.soft}>
                 {step === 1 && (
                   <>
-                    <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{c.p1Title}</h2><p>{c.p1Body}</p></div>
-                    <ul className="mz-tips">{c.tips.map((tip, i) => <li key={tip}><span className="mz-chip"><Icon name={TIP_ICONS[i] ?? 'check'} weight="duotone" /></span>{tip}</li>)}</ul>
-                    <p className="mz-note"><Icon name="lock" size={18} />{!b.ai.image && b.ai.free ? c.freeConsent : c.privacy}</p>
-                    <div className="mz-panel__acts mz-only-wide-flex">
-                      <button type="button" className="mz-reset mz-btn is-main" disabled={!source} onClick={() => setStep(2)}>{c.continue}<Icon name="next" size={20} className="mz-arrow" /></button>
-                      {source && <SourceSwitch source={source} onPhoto={() => fileA.current?.click()} onModel={() => setSource({ kind: 'model' })} />}
-                      {source && <button type="button" className="mz-reset mz-link" onClick={() => setLive(true)}><Icon name="camera" size={18} />{c.liveCta}</button>}
-                    </div>
-                    {source && <div className="mz-only-phone-flex mz-panel__acts"><SourceSwitch source={source} onPhoto={() => fileA.current?.click()} onModel={() => setSource({ kind: 'model' })} /><button type="button" className="mz-reset mz-link" onClick={() => setLive(true)}><Icon name="camera" size={18} />{c.liveCta}</button></div>}
+                    <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{photoAI ? c.p1Title : c.p1TitleSoon}</h2><p>{photoAI ? c.p1Body : c.p1BodySoon}</p></div>
+                    {/* The photo tips and the note on where her photo goes only matter when a photo is asked for. */}
+                    {photoAI && <ul className="mz-tips">{c.tips.map((tip, i) => <li key={tip}><span className="mz-chip"><Icon name={TIP_ICONS[i] ?? 'check'} weight="duotone" /></span>{tip}</li>)}</ul>}
+                    {photoAI && <p className="mz-note"><Icon name="lock" size={18} />{!b.ai.image && b.ai.free ? c.freeConsent : c.privacy}</p>}
+                    {/* Without photo try-on the start card's two choices are the only actions, so no disabled Continue competes with them. */}
+                    {(photoAI || source) && (
+                      <div className="mz-panel__acts mz-only-wide-flex">
+                        <button type="button" className="mz-reset mz-btn is-main" disabled={!source} onClick={() => setStep(2)}>{c.continue}<Icon name="next" size={20} className="mz-arrow" /></button>
+                        {source && <SourceSwitch source={source} photoAI={photoAI} onPhoto={() => fileA.current?.click()} onModel={() => setSource(MODEL)} />}
+                        {source && <button type="button" className="mz-reset mz-link" onClick={() => setLive(true)}><Icon name="camera" size={18} />{c.liveCta}</button>}
+                      </div>
+                    )}
+                    {source && <div className="mz-only-phone-flex mz-panel__acts"><SourceSwitch source={source} photoAI={photoAI} onPhoto={() => fileA.current?.click()} onModel={() => setSource(MODEL)} /><button type="button" className="mz-reset mz-link" onClick={() => setLive(true)}><Icon name="camera" size={18} />{c.liveCta}</button></div>}
                   </>
                 )}
                 {step === 2 && (
                   <>
-                    <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{c.p2Title}</h2><p>{c.p2Body}</p></div>
-                    <div className="mz-pickgrid" role="group" aria-label={c.p2Title}>
+                    <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{c.p2Title}</h2><p>{source?.kind === 'model' ? c.p2BodyModel : c.p2Body}</p></div>
+                    <div className="mz-pickgrid" role="group" aria-label={c.p2Title}
+                      // Opened from the start card on a phone, the tiles sit below the studio: they are brought into view.
+                      ref={el => { if (!el || !wantGrid.current) return; wantGrid.current = false; if (matchMedia('(max-width: 900px)').matches) requestAnimationFrame(() => bringIntoView(el.closest('.mz-panel'))); }}>
                       {[...picks.map(id => b.byId(id)).filter((x): x is Garment => x?.kind === 'garment'), ...garments.filter(x => !picks.includes(x.id))].map(x => (
                         <motion.button key={x.id} type="button" className="mz-reset mz-pickgrid__item" aria-pressed={x.id === g?.id} aria-label={b.tx(x.name)} style={{ background: cardBg(x.colors[0]?.hex) }}
                           onClick={() => setGid(x.id)} whileHover={{ y: -4 }} transition={SPRING.soft}>
-                          {x.front && <img src={x.front} alt="" />}
+                          {x.front && <FadeImg src={x.front} alt="" draggable={false} fallback={<Icon name="hanger" className="mz-pickgrid__none" />} />}
                           {picks.includes(x.id) && <span className="mz-pickgrid__pick" aria-hidden="true"><Icon name="hanger" size={14} /></span>}
                           <AnimatePresence>{x.id === g?.id && <motion.span className="mz-pickgrid__check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={SPRING.soft}><Icon name="check" size={16} /></motion.span>}</AnimatePresence>
                         </motion.button>
@@ -336,7 +490,7 @@ export function TryOnPage() {
                     {g && <p className="mz-panel__sel"><span>{b.tx(g.name)}</span><span>{b.price(effectivePrice(g))}</span></p>}
                     {freeRun && <p className="mz-note"><Icon name="info" size={18} />{c.freeConsent}</p>}
                     <div className="mz-panel__acts mz-only-wide-flex">
-                      <button type="button" className="mz-reset mz-btn is-main" onClick={preview}><Icon name="hanger" size={20} />{c.seePreview}</button>
+                      <button type="button" className="mz-reset mz-btn is-main" onClick={() => preview()}><Icon name="hanger" size={20} />{c.seePreview}</button>
                       <button type="button" className="mz-reset mz-link" onClick={() => setStep(1)}>{c.stepBack}</button>
                     </div>
                   </>
@@ -345,7 +499,7 @@ export function TryOnPage() {
                   <>
                     <div className="mz-panel__head"><p className="mz-only-wide-inline">{stepOf}</p><h2>{c.dressing}</h2><p>{freeRun ? c.freeDressing : c.dressingSub}</p></div>
                     <div role="progressbar" aria-label={c.dressing} aria-valuetext={freeRun ? c.freeDressing : undefined} className="mz-progress"><motion.span initial={{ scaleX: 0 }} animate={{ scaleX: freeRun ? 0.9 : 1 }} transition={{ duration: reduce ? 0.3 : freeRun ? 40 : 2.8, ease: freeRun ? 'easeOut' : EASE }} /></div>
-                    <div className="mz-panel__mini">{g.front && <img src={g.front} alt="" />}<span>{b.tx(g.name)}</span></div>
+                    <div className="mz-panel__mini">{g.front && <FadeImg src={g.front} alt="" draggable={false} />}<span>{b.tx(g.name)}</span></div>
                   </>
                 )}
                 {step === 3 && !dressing && g && (
@@ -387,24 +541,27 @@ export function TryOnPage() {
         </div>
       </div>
 
-      <div className="mz-try-bar">
+      {/* Without photo try-on and before she has chosen, the start card holds the only actions: no bar with a disabled button. */}
+      {(photoAI || source) && <div className="mz-try-bar">
         {step > 1 && <button type="button" className="mz-reset mz-icon-btn mz-try-bar__back" aria-label={c.stepBack} onClick={() => goStep((step - 1) as Step)}><Icon name="back" /></button>}
         <button type="button" className="mz-reset mz-btn is-main" disabled={primary.off} onClick={primary.go}>
           {primary.icon === 'next' ? <>{primary.label}<Icon name="next" size={20} className="mz-arrow" /></> : <><Icon name={primary.icon} size={20} />{primary.label}</>}
         </button>
-      </div>
+      </div>}
       <InfoDialog open={guide} onClose={() => setGuide(false)} title={c.sizeGuide} body={c.sizeGuideBody} />
       <AnimatePresence>
-        {live && <LiveMirror garments={garments.filter(x => x.kind === 'garment')} initial={g?.id} onClose={() => setLive(false)} onPhoto={() => { setLive(false); fileA.current?.click(); }}
+        {live && <LiveMirror garments={garments.filter(x => x.kind === 'garment')} initial={g?.id} onClose={() => setLive(false)} onPhoto={photoAI ? () => { setLive(false); fileA.current?.click(); } : undefined}
+          onModel={photoAI ? undefined : id => { setLive(false); const p = b.byId(id); seeOnModel(p?.kind === 'garment' ? p : g); }}
           onRealistic={(frame, id) => { fromLive.current = true; setLive(false); setGid(id); setResult(null); setSource({ kind: 'own', url: frame }); }} />}
       </AnimatePresence>
     </main>
   );
 }
 
-/** Lets the customer swap between their own photo and the house model on step one. */
-function SourceSwitch({ source, onPhoto, onModel }: { source: NonNullable<Source>; onPhoto: () => void; onModel: () => void }) {
+/** Lets the customer swap between their own photo and the house model on step one (her photo only when it can be dressed). */
+function SourceSwitch({ source, photoAI, onPhoto, onModel }: { source: NonNullable<Source>; photoAI: boolean; onPhoto: () => void; onModel: () => void }) {
   const { c } = useShop();
+  if (!photoAI) return source.kind === 'own' ? <button type="button" className="mz-reset mz-link" onClick={onModel}><Icon name="model" size={18} />{c.model}</button> : null;
   return source.kind === 'own'
     ? <>
         <button type="button" className="mz-reset mz-link is-main" onClick={onPhoto}><Icon name="upload" size={18} />{c.replace}</button>

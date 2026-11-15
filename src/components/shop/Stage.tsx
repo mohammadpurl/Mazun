@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { effectivePrice } from '@/lib/fit';
 import { useBoutique } from '../boutique/Boutique';
-import { productHref } from './Chrome';
+import { fittingHref, liveHref, productHref } from '@/lib/paths';
 import { SplitReveal, useScrollScene } from './fx';
 import { Icon, type IconName } from './Icon';
 import { useShop } from './Shop';
@@ -78,7 +78,8 @@ export function StageHero() {
   const g = pieces[cur];
   const offset = (i: number) => { let d = ((i - cur) % n + n) % n; if (d > n / 2) d -= n; return d; };
   const trust: { icon: IconName; text: string }[] = [
-    { icon: 'lock', text: c.aiFact1 },
+    // No photo leaves the phone while only the on-device mirror is on, so the line says that instead.
+    { icon: 'lock', text: b.ai.photo || b.ai.live ? c.aiFact1 : c.aiFact1Soon },
     { icon: 'send', text: c.heroShips.replace('{city}', b.tx(b.settings.originCity)) },
   ];
 
@@ -89,12 +90,13 @@ export function StageHero() {
       <div className="st-hero__glow" aria-hidden="true" />
       <div className="st-hero__in">
         <div className="st-hero__copy">
-          <motion.p className="ai-eyebrow st-hero__eyebrow" {...rise(1)}><Icon name="hanger" size={18} />{c.stageK}</motion.p>
+          <motion.p className="ai-eyebrow st-hero__eyebrow" {...rise(1)}><Icon name="hanger" size={18} />{b.ai.photo ? c.stageK : c.stageKSoon}</motion.p>
           <SplitReveal key={b.lang} as="h1" className="st-hero__lead" text={c.stageT} />
-          <motion.p className="ai-body st-hero__body" {...rise(4)}>{c.stageB}</motion.p>
+          <motion.p className="ai-body st-hero__body" {...rise(4)}>{b.ai.photo ? c.stageB : c.stageBSoon}</motion.p>
           <motion.div className="ai-ctas st-hero__ctas" {...rise(5)}>
-            <Link href={`/fitting-room?g=${g.id}`} className="mz-btn is-main mz-pill">{c.stageTry}<Icon name="next" size={20} className="mz-arrow" /></Link>
-            <Link href={`/fitting-room?g=${g.id}&live=1`} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
+            {/* While photo try-on is off, the hero leads to the piece on the house model. */}
+            <Link href={fittingHref(g.id, b.ai.photo)} className="mz-btn is-main mz-pill">{b.ai.photo ? c.stageTry : c.seeOnModel}<Icon name="next" size={20} className="mz-arrow" /></Link>
+            <Link href={liveHref(g.id)} className="mz-btn mz-pill is-line"><Icon name="camera" size={20} />{c.aiWearLive}</Link>
           </motion.div>
           <motion.ul className="st-hero__trust" {...rise(6)}>
             {trust.map(t => <li key={t.icon}><Icon name={t.icon} size={18} />{t.text}</li>)}

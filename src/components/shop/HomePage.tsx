@@ -223,7 +223,8 @@ function Close() {
   const a = useConcierge();
   const [v, setV] = useState('');
   const facts: { icon: IconName; text: string }[] = [
-    { icon: 'lock', text: c.aiFact1 },
+    // No photo leaves the phone while only the on-device mirror is on, so the line says that instead.
+    { icon: 'lock', text: b.ai.photo || b.ai.live ? c.aiFact1 : c.aiFact1Soon },
     { icon: 'ruler', text: c.aiFact2 },
     { icon: 'send', text: fill(c.aiFact3, { city: b.tx(b.settings.originCity) }) },
   ];
