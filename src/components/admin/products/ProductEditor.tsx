@@ -137,7 +137,7 @@ export function ProductEditor({ initial, categories, defaultKind, currency }: { 
             <div className="slots">
               <Slot label={isGarment ? 'جلوی لباس (رگال)' : 'عکس اصلی'} hint="رها کنید یا بزنید" value={v.front} onChange={x => set('front', x)} onBusy={onBusy} />
               <Slot label={isGarment ? 'پشت لباس (رگال)' : 'عکس دوم'} hint="خالی = همان عکس رو" value={v.back} onChange={x => set('back', x)} onBusy={onBusy} />
-              {isGarment && <Slot label="تن مدل — جلو" hint="برای کارت‌ها و صفحهٔ محصول" value={v.wornFront} onChange={x => set('wornFront', x)} onBusy={onBusy} cover />}
+              {isGarment && <Slot label="تن مدل — جلو" hint="برای کارت‌ها، صفحهٔ محصول و «مدل آتلیه» در اتاق پرو" value={v.wornFront} onChange={x => set('wornFront', x)} onBusy={onBusy} cover />}
               {isGarment && <Slot label="تن مدل — پشت" hint="خالی = عکس پشت رگال" value={v.wornBack} onChange={x => set('wornBack', x)} onBusy={onBusy} cover />}
               {isGarment && <Slot label="جزئیات پارچه" hint="نمای نزدیک دوخت" value={v.detail} onChange={x => set('detail', x)} onBusy={onBusy} cover />}
             </div>

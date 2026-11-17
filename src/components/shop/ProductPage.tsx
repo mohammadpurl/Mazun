@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, u
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { effectivePrice } from '@/lib/fit';
+import { fittingHref } from '@/lib/paths';
 import type { Garment } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { InfoDialog } from './Chrome';
@@ -41,7 +42,8 @@ function DressForm({ g, small }: { g: Garment; small?: boolean }) {
       onPointerLeave={() => mx.set(0)} style={{ rotateY, transformPerspective: 1200 }}>
       <span className="mz-form__head" aria-hidden="true" />
       <span className="mz-form__neck" aria-hidden="true" />
-      {g.front && <img src={g.front} alt={`${c.wearing} ${b.tx(g.name)}`} />}
+      {/* The piece on the dress form, not on the house model. */}
+      {g.front && <img src={g.front} alt={`${b.tx(g.name)} — ${c.onForm}`} />}
       <span className="mz-form__pole" aria-hidden="true" />
       <span className="mz-form__base" aria-hidden="true" />
     </motion.div>
@@ -188,9 +190,10 @@ function Product({ g }: { g: Garment }) {
             </motion.div>
             <motion.div className="mz-pd__actions" {...rise(3)}>
               <button type="button" className="mz-reset mz-btn is-main is-block mz-pd__add" disabled={soldOut} onClick={add}><Icon name="bag" size={20} />{soldOut ? c.soldOut : c.addToBag}</button>
-              <Link href={`/fitting-room?g=${encodeURIComponent(g.id)}`} className="mz-cardlink">
+              {/* While photo try-on is off, the card leads to the piece on the house model and names the live mirror. */}
+              <Link href={fittingHref(g.id, b.ai.photo)} className="mz-cardlink">
                 <span className="mz-chip"><Icon name="hanger" weight="duotone" /></span>
-                <span className="mz-cardlink__text"><span>{c.tryLink}</span><span>{c.trySub}</span></span>
+                <span className="mz-cardlink__text"><span>{b.ai.photo ? c.tryLink : c.seeOnModel}</span><span>{b.ai.photo ? c.trySub : c.trySubSoon}</span></span>
                 <Icon name="next" size={20} className="mz-arrow" />
               </Link>
               <button type="button" className="mz-reset mz-cardlink" onClick={() => openChat(g.id)}>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { shopChatLink } from '@/lib/order-message';
+import { productHref } from '@/lib/paths';
 import { LANGS, type Lang } from '@/lib/types';
 import { useBoutique } from '../boutique/Boutique';
 import { useOpenChat } from './concierge/useConcierge';
@@ -16,7 +17,7 @@ import { EASE, SPRING, THEME_KEYS, THEMES, num } from './tokens';
 
 const LANG_LABEL: Record<Lang, string> = { en: 'EN', ar: 'عربي', fa: 'فارسی' };
 
-export const productHref = (id: string) => `/abaya/${encodeURIComponent(id)}`;
+export { productHref };
 
 function LangSwitch({ compact }: { compact?: boolean }) {
   const b = useBoutique();

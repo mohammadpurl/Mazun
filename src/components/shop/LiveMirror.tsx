@@ -109,8 +109,10 @@ function cutSleeves(f: Fit, data: Uint8ClampedArray): Pick<Fit, 'body' | 'r' | '
   return { body, r, l };
 }
 
-export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }: {
+export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto, onModel }: {
   garments: Garment[]; initial?: string | null; onClose: () => void; onRealistic?: (frame: string, garmentId: string) => void; onPhoto?: () => void;
+  /** Offered when the camera cannot be used and no photo can be dressed instead: the chosen piece on the house model. */
+  onModel?: (garmentId: string) => void;
 }) {
   const b = useBoutique();
   const { c } = useShop();
@@ -325,7 +327,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
     try { setShot({ composite: cv.toDataURL('image/jpeg', 0.9), frame: raw.toDataURL('image/jpeg', 0.88) }); } catch { setStatus('error'); }
   }
 
-  const note = status === 'denied' ? c.liveDenied : status === 'unsupported' ? c.liveUnsupported : status === 'error' ? c.liveError : null;
+  const note = status === 'denied' ? c.liveDenied : status === 'unsupported' ? (onPhoto || !onModel ? c.liveUnsupported : c.liveUnsupportedSoon) : status === 'error' ? c.liveError : null;
 
   return (
     <motion.div ref={dialog} className="mz-live" role="dialog" aria-modal="true" aria-label={c.liveTitle} tabIndex={-1} dir={b.dir}
@@ -382,6 +384,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
             <Icon name="alert" size={18} /><p>{note}</p>
             {status !== 'unsupported' && <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => setAttempt(a => a + 1)}><Icon name="again" size={18} />{c.liveRetry}</button>}
             {onPhoto && <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill" onClick={onPhoto}><Icon name="upload" size={18} />{c.choose}</button>}
+            {!onPhoto && onModel && gid && <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill" onClick={() => onModel(gid)}><Icon name="model" size={18} />{c.seeOnModel}</button>}
           </div>
         )}
         {mode === 'local' && status === 'live' && !shot && (
@@ -413,7 +416,7 @@ export function LiveMirror({ garments, initial, onClose, onRealistic, onPhoto }:
               <button type="button" className="mz-reset mz-btn is-ghost-ink mz-pill" onClick={() => { setStatus('starting'); setShot(null); if (mode === 'ai') ai.restart(); }}><Icon name="again" size={18} />{c.liveRetake}</button>
               <a className="mz-btn is-ghost-ink mz-pill" href={shot.composite} download={`mazun-${gid ?? 'mirror'}.jpg`}><Icon name="save" size={18} />{c.liveSave}</a>
               {gid && <Link className="mz-btn is-ghost-ink mz-pill" href={productHref(gid)} onClick={onClose}><Icon name="bag" size={18} />{c.liveSize}</Link>}
-              {mode === 'local' && onRealistic && (b.ai.image || b.ai.free) && gid && <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => onRealistic(shot.frame, gid)}><Icon name="hanger" size={18} />{c.liveAi}</button>}
+              {mode === 'local' && onRealistic && b.ai.photo && gid && <button type="button" className="mz-reset mz-btn is-light mz-pill" onClick={() => onRealistic(shot.frame, gid)}><Icon name="hanger" size={18} />{c.liveAi}</button>}
             </motion.div>
           )}
         </AnimatePresence>

@@ -11,7 +11,7 @@ import { shopChatLink } from '@/lib/order-message';
 import { lookTotal } from '@/lib/stylist';
 import { ACCESSORY_KINDS, type Garment } from '@/lib/types';
 import { useBoutique } from '../../boutique/Boutique';
-import { productHref } from '../Chrome';
+import { fittingHref, liveHref, productHref } from '@/lib/paths';
 import { Icon, type IconName } from '../Icon';
 import { useShop } from '../Shop';
 import { SPRING, num } from '../tokens';
@@ -49,6 +49,7 @@ function IntroCard() {
 
 function PieceCard() {
   const { c } = useShop();
+  const b = useBoutique();
   const a = useConcierge();
   const g = a.garment;
   if (!g) return null;
@@ -56,7 +57,7 @@ function PieceCard() {
     <div className="ai-card">
       <PieceLink g={g} />
       <div className="ai-acts">
-        <Link href={`/fitting-room?g=${encodeURIComponent(g.id)}`} className="ai-act is-main"><Icon name="yourPhoto" size={18} />{c.aiActTry}</Link>
+        <Link href={fittingHref(g.id, b.ai.photo)} className="ai-act is-main"><Icon name={b.ai.photo ? 'yourPhoto' : 'model'} size={18} />{b.ai.photo ? c.aiActTry : c.seeOnModel}</Link>
         <button type="button" className="mz-reset ai-act" onClick={a.findSize}><Icon name="ruler" size={18} />{c.aiActSize}</button>
         <button type="button" className="mz-reset ai-act" disabled={a.busy} onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
         <button type="button" className="mz-reset ai-act is-quiet" onClick={a.another}><Icon name="turn" size={18} />{c.aiActOther}</button>
@@ -67,13 +68,15 @@ function PieceCard() {
 
 function TryCard() {
   const { c } = useShop();
+  const b = useBoutique();
   const a = useConcierge();
-  const id = encodeURIComponent(a.garment?.id ?? '');
+  const id = a.garment?.id ?? '';
+  // Her own photo only when an image AI can dress it; otherwise the piece on the house model.
   return (
     <div className="ai-card">
       <div className="ai-acts">
-        <Link href={`/fitting-room?g=${id}`} className="ai-act is-main"><Icon name="yourPhoto" size={18} />{c.aiWearPhoto}</Link>
-        <Link href={`/fitting-room?g=${id}&live=1`} className="ai-act"><Icon name="camera" size={18} />{c.aiWearLive}</Link>
+        <Link href={fittingHref(id, b.ai.photo)} className="ai-act is-main"><Icon name={b.ai.photo ? 'yourPhoto' : 'model'} size={18} />{b.ai.photo ? c.aiWearPhoto : c.seeOnModel}</Link>
+        <Link href={liveHref(id)} className="ai-act"><Icon name="camera" size={18} />{c.aiWearLive}</Link>
       </div>
     </div>
   );
@@ -144,7 +147,7 @@ function SizeCard() {
       <div className="ai-acts">
         {rec.size !== rec.wanted && <button type="button" className="mz-reset ai-act is-main" onClick={a.another}><Icon name="turn" size={18} />{c.aiActOther}</button>}
         <button type="button" className={`mz-reset ai-act${rec.size === rec.wanted ? ' is-main' : ''}`} onClick={a.addSized}><Icon name="bag" size={18} />{c.aiAddSize}</button>
-        <Link href={`/fitting-room?g=${encodeURIComponent(r.garmentId)}`} className="ai-act"><Icon name="yourPhoto" size={18} />{c.aiActTry}</Link>
+        <Link href={fittingHref(r.garmentId, b.ai.photo)} className="ai-act"><Icon name={b.ai.photo ? 'yourPhoto' : 'model'} size={18} />{b.ai.photo ? c.aiActTry : c.seeOnModel}</Link>
         <button type="button" className="mz-reset ai-act" disabled={a.busy} onClick={a.completeSet}><Icon name="handbag" size={18} />{c.aiActSet}</button>
         <button type="button" className="mz-reset ai-act is-quiet" onClick={a.editSize}><Icon name="ruler" size={18} />{c.aiActEdit}</button>
       </div>

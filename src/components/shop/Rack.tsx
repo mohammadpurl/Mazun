@@ -30,6 +30,25 @@ function hangOf(g: Garment) {
   return { real: false, rest: 74, on: 180, front: g.front, back: g.back || g.front, neckF: 0.5, neckB: 0.5 };
 }
 
+/** The pictures on the front of each hanging piece (the backs only show when one turns). */
+const fronts = (root: HTMLElement) => [...root.querySelectorAll<HTMLImageElement>('.mz-face:not(.mz-back) img')];
+
+/** Starts loading the fronts before the rail reaches the screen; they are lazy, so a fast scroll can outrun them. */
+function fetchFronts(root: HTMLElement) {
+  fronts(root).forEach(img => { img.loading = 'eager'; });
+}
+
+/** Calls `ready` once every front is loaded and decoded (or has failed), or after `ms` at most, so a slow picture
+ *  never holds the rail back for long. Returns the cancel, for when the rack leaves before then. */
+function whenHung(root: HTMLElement, ms: number, ready: () => void) {
+  fetchFronts(root);
+  let open = true;
+  const go = () => { if (open) { open = false; clearTimeout(timer); ready(); } };
+  const timer = setTimeout(go, ms);
+  Promise.all(fronts(root).map(img => img.decode().catch(() => {}))).then(go);
+  return () => { open = false; clearTimeout(timer); };
+}
+
 /** The brass rail: the pieces hang close together, each turned three-quarters as photographed, and the one under
  *  the pointer (or tapped) swings round to show its back while its neighbours step aside; on a wide screen the
  *  pieces also turn one after another as the rail scrolls past. Focus names the piece in the caption. */
@@ -46,11 +65,16 @@ export function Rack() {
   const ids = rail.map(g => g.id).join(',');
   useScrollScene(section, root => {
     const list = ids.split(','), stage = root.querySelector('.mz-rack__stage');
-    // the pieces drop onto the rail one after another the first time it comes into view
-    gsap.from(root.querySelectorAll('.mz-hang__drop'), {
-      y: -46, opacity: 0, rotate: -2.5, transformOrigin: '50% 0%', duration: 1.25, ease: 'power3.out', stagger: 0.075,
-      scrollTrigger: { trigger: stage, start: 'top 82%', once: true },
+    let stop = () => {};
+    // The pieces drop onto the rail one after another the first time it comes into view, but only once their
+    // pictures are in (at most 2 s on a phone, 3.5 s on a wide screen): on a slow phone they used to drop empty and
+    // pop in later, leaving a bare rail.
+    const fall = gsap.from(root.querySelectorAll('.mz-hang__drop'), {
+      y: -46, opacity: 0, rotate: -2.5, transformOrigin: '50% 0%', duration: 1.25, ease: 'power3.out', stagger: 0.075, paused: true,
     });
+    const wait = window.matchMedia('(max-width: 900px)').matches ? 2000 : 3500;
+    ScrollTrigger.create({ trigger: stage, start: 'top bottom+=900', once: true, onEnter: () => fetchFronts(root) });
+    ScrollTrigger.create({ trigger: stage, start: 'top 82%', once: true, onEnter: () => { stop = whenHung(root, wait, () => fall.play()); } });
     gsap.matchMedia().add('(min-width: 901px) and (hover: hover)', () => {
       const t = ScrollTrigger.create({
         trigger: stage, start: 'top 62%', end: 'bottom 38%',
@@ -59,6 +83,7 @@ export function Rack() {
       });
       return () => t.kill();
     });
+    return () => stop();
   }, [ids]);
   // Named from the start: on a touch screen nothing would fill the caption until the first tap. The piece under the
   // pointer keeps the caption while the page scrolls past it, so the name never belongs to another garment.
